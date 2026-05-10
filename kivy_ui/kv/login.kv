@@ -1,0 +1,319 @@
+#:import dp kivy.metrics.dp
+#:import sp kivy.metrics.sp
+#:import hx kivy.utils.get_color_from_hex
+
+<LoginScreen>:
+    name: "login"
+    FloatLayout:
+        canvas.before:
+            Color:
+                rgba: hx(app.theme_state.bg)
+            Rectangle:
+                size: self.size
+                pos: self.pos
+            Color:
+                rgba: hx(app.theme_state.accent)[:3] + [0.24 if app.theme_mode == "light" else 0.34]
+            Ellipse:
+                pos: root.width * -0.18, root.height * 0.52
+                size: root.width * 0.78, root.width * 0.78
+            Color:
+                rgba: hx(app.theme_state.primary_soft)[:3] + [0.18 if app.theme_mode == "light" else 0.24]
+            Ellipse:
+                pos: root.width * 0.46, root.height * 0.40
+                size: root.width * 0.66, root.width * 0.66
+            Color:
+                rgba: hx(app.theme_state.warning)[:3] + [0.12 if app.theme_mode == "light" else 0.18]
+            Ellipse:
+                pos: root.width * 0.18, root.height * -0.06
+                size: root.width * 0.64, root.width * 0.64
+
+        AnchorLayout:
+            anchor_x: "center"
+            anchor_y: "center"
+
+            BoxLayout:
+                size_hint: None, None
+                width: dp(440) if root.width >= dp(520) else root.width * 0.88
+                height: dp(640) if root.height >= dp(740) else root.height * 0.88
+                orientation: "vertical"
+                padding: dp(24), dp(24), dp(24), dp(22)
+                spacing: dp(14)
+
+                canvas.before:
+                    Color:
+                        rgba: hx(app.theme_state.shadow)[:3] + [0.22 if app.theme_mode == "light" else 0.34]
+                    RoundedRectangle:
+                        pos: self.x + dp(4), self.y - dp(10)
+                        size: self.size
+                        radius: [dp(30)]
+                    Color:
+                        rgba: hx(app.theme_state.card)[:3] + [0.82 if app.theme_mode == "light" else 0.13]
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(30)]
+                    Color:
+                        rgba: hx(app.theme_state.text)[:3] + [0.08 if app.theme_mode == "light" else 0.05]
+                    RoundedRectangle:
+                        pos: self.x + dp(1), self.y + self.height * 0.48
+                        size: self.width - dp(2), self.height * 0.52
+                        radius: [dp(30), dp(30), dp(14), dp(14)]
+                canvas.after:
+                    Color:
+                        rgba: hx(app.theme_state.border)[:3] + [0.45 if app.theme_mode == "light" else 0.16]
+                    Line:
+                        rounded_rectangle: (self.x, self.y, self.width, self.height, dp(30))
+                        width: 1.05
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(86)
+                    Widget:
+                    AnchorLayout:
+                        size_hint_x: None
+                        width: dp(92)
+                        BoxLayout:
+                            size_hint: None, None
+                            width: dp(82)
+                            height: dp(82)
+                            canvas.before:
+                                Color:
+                                    rgba: hx(app.theme_state.card_alt)[:3] + [0.78 if app.theme_mode == "light" else 0.12]
+                                Ellipse:
+                                    pos: self.pos
+                                    size: self.size
+                                Color:
+                                    rgba: hx(app.theme_state.accent)[:3] + [0.18 if app.theme_mode == "light" else 0.24]
+                                Ellipse:
+                                    pos: self.x + dp(8), self.y + dp(8)
+                                    size: self.width - dp(16), self.height - dp(16)
+                            canvas.after:
+                                Color:
+                                    rgba: hx(app.theme_state.border)[:3] + [0.42 if app.theme_mode == "light" else 0.18]
+                                Line:
+                                    circle: self.center_x, self.center_y, self.width / 2
+                                    width: 1.1
+                            Label:
+                                text: "LT"
+                                color: hx(app.theme_state.text)
+                                font_size: sp(28)
+                                bold: True
+                                text_size: self.size
+                                halign: "center"
+                                valign: "middle"
+                    Widget:
+
+                Label:
+                    text: "Bienvenido a LaTiburona"
+                    color: hx(app.theme_state.text)
+                    font_size: sp(24)
+                    bold: True
+                    size_hint_y: None
+                    height: dp(36)
+                    text_size: self.size
+                    halign: "center"
+                    valign: "middle"
+
+                Label:
+                    text: "Sistema inteligente de reservas"
+                    color: hx(app.theme_state.accent)
+                    font_size: sp(14)
+                    bold: True
+                    size_hint_y: None
+                    height: dp(22)
+                    text_size: self.size
+                    halign: "center"
+                    valign: "middle"
+
+                Label:
+                    text: root.helper_text
+                    color: hx(app.theme_state.secondary)[:3] + [0.92]
+                    font_size: sp(13)
+                    size_hint_y: None
+                    height: dp(40)
+                    text_size: self.width, None
+                    halign: "center"
+                    valign: "middle"
+
+                Label:
+                    text: "Barranquilla, Colombia"
+                    color: hx(app.theme_state.text)[:3] + [0.9]
+                    font_size: sp(12)
+                    size_hint_y: None
+                    height: dp(18)
+                    text_size: self.size
+                    halign: "left"
+                    valign: "middle"
+
+                Label:
+                    text: "Correo electronico"
+                    color: hx(app.theme_state.secondary)
+                    font_size: sp(12)
+                    size_hint_y: None
+                    height: dp(18)
+                    text_size: self.size
+                    halign: "left"
+                    valign: "middle"
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(56)
+                    padding: dp(16), 0
+                    spacing: dp(12)
+                    canvas.before:
+                        Color:
+                            rgba: hx(app.theme_state.card_alt)[:3] + [0.78 if app.theme_mode == "light" else 0.10]
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(18)]
+                    canvas.after:
+                        Color:
+                            rgba: hx(app.theme_state.border)[:3] + [0.45 if app.theme_mode == "light" else 0.16]
+                        Line:
+                            rounded_rectangle: (self.x, self.y, self.width, self.height, dp(18))
+                            width: 1.0
+                    Label:
+                        text: "@"
+                        color: hx(app.theme_state.accent)[:3] + [0.95]
+                        font_size: sp(18)
+                        size_hint_x: None
+                        width: dp(18)
+                        text_size: self.size
+                        halign: "center"
+                        valign: "middle"
+                    TextInput:
+                        id: email_input
+                        hint_text: "Correo electronico"
+                        multiline: False
+                        background_normal: ""
+                        background_active: ""
+                        background_color: 0, 0, 0, 0
+                        foreground_color: hx(app.theme_state.text)
+                        hint_text_color: hx(app.theme_state.muted)
+                        cursor_color: hx(app.theme_state.accent)
+                        font_size: sp(14)
+                        padding: [0, dp(16), 0, 0]
+
+                Label:
+                    text: "Contrasena"
+                    color: hx(app.theme_state.secondary)
+                    font_size: sp(12)
+                    size_hint_y: None
+                    height: dp(18)
+                    text_size: self.size
+                    halign: "left"
+                    valign: "middle"
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(56)
+                    padding: dp(16), 0
+                    spacing: dp(12)
+                    canvas.before:
+                        Color:
+                            rgba: hx(app.theme_state.card_alt)[:3] + [0.78 if app.theme_mode == "light" else 0.10]
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(18)]
+                    canvas.after:
+                        Color:
+                            rgba: hx(app.theme_state.border)[:3] + [0.45 if app.theme_mode == "light" else 0.16]
+                        Line:
+                            rounded_rectangle: (self.x, self.y, self.width, self.height, dp(18))
+                            width: 1.0
+                    Label:
+                        text: "#"
+                        color: hx(app.theme_state.accent)[:3] + [0.95]
+                        font_size: sp(18)
+                        size_hint_x: None
+                        width: dp(18)
+                        text_size: self.size
+                        halign: "center"
+                        valign: "middle"
+                    TextInput:
+                        id: password_input
+                        hint_text: "Contrasena"
+                        password: True
+                        multiline: False
+                        background_normal: ""
+                        background_active: ""
+                        background_color: 0, 0, 0, 0
+                        foreground_color: hx(app.theme_state.text)
+                        hint_text_color: hx(app.theme_state.muted)
+                        cursor_color: hx(app.theme_state.accent)
+                        font_size: sp(14)
+                        padding: [0, dp(16), 0, 0]
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(34)
+                    spacing: dp(8)
+                    BoxLayout:
+                        size_hint_x: None
+                        width: dp(164)
+                        spacing: dp(6)
+                        CheckBox:
+                            id: remember_check
+                            active: True
+                            size_hint: None, None
+                            size: dp(24), dp(24)
+                        Label:
+                            text: "Recordarme"
+                            color: hx(app.theme_state.secondary)
+                            font_size: sp(12)
+                            text_size: self.size
+                            halign: "left"
+                            valign: "middle"
+                    Widget:
+                    Button:
+                        text: "Olvidaste tu contrasena?"
+                        size_hint_x: None
+                        width: dp(168)
+                        font_size: sp(12)
+                        background_normal: ""
+                        background_down: ""
+                        background_color: 0, 0, 0, 0
+                        color: hx(app.theme_state.accent)
+                        on_release: root.forgot_password()
+
+                Label:
+                    id: status_label
+                    text: root.feedback_text
+                    color: hx(app.theme_state.danger) if root.feedback_tone == "danger" else hx(app.theme_state.warning) if root.feedback_tone == "warning" else hx(app.theme_state.success) if root.feedback_tone == "success" else hx(app.theme_state.accent)
+                    opacity: 1 if root.feedback_text else 0
+                    font_size: sp(12)
+                    size_hint_y: None
+                    height: dp(34) if root.feedback_text else 0
+                    text_size: self.width, None
+                    halign: "left"
+                    valign: "middle"
+
+                PrimaryButton:
+                    id: login_button
+                    text: "INICIAR SESION"
+                    busy_text: "Validando acceso..."
+                    size_hint_y: None
+                    height: dp(54)
+                    disabled: root.loading
+                    on_release: root.login()
+
+                SecondaryButton:
+                    text: "Crear cuenta"
+                    size_hint_y: None
+                    height: dp(50)
+                    disabled: root.loading
+                    on_release: root.go_register()
+
+                Label:
+                    text: "Acceso global con JWT, sesion persistente y soporte offline con cache."
+                    color: hx(app.theme_state.muted)[:3] + [0.84]
+                    font_size: sp(11)
+                    size_hint_y: None
+                    height: dp(30)
+                    text_size: self.width, None
+                    halign: "center"
+                    valign: "middle"
+
+                Widget:

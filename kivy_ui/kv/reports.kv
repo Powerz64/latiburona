@@ -1,0 +1,289 @@
+#:import dp kivy.metrics.dp
+#:import ds kivy_ui.theme
+#:import hx kivy.utils.get_color_from_hex
+
+<ReportsScreen>:
+    name: "reports"
+
+    BoxLayout:
+        orientation: "vertical"
+
+        ScrollView:
+            do_scroll_x: False
+            bar_width: dp(6)
+
+            AnchorLayout:
+                anchor_x: "center"
+                anchor_y: "top"
+                size_hint_y: None
+                height: content.height
+
+                BoxLayout:
+                    id: content
+                    orientation: "vertical"
+                    size_hint: None, None
+                    width: min(root.width - dp(48), ds.MAX_CONTENT_WIDTH)
+                    height: self.minimum_height
+                    padding: dp(24)
+                    spacing: dp(22)
+
+                    CardBox:
+                        size_hint_y: None
+                        height: dp(144)
+                        padding: dp(24)
+                        spacing: dp(10)
+                        background_color: hx(app.theme_state.surface_alt)
+                        border_color: hx(app.theme_state.primary)
+                        shadow_offset: dp(3)
+                        canvas.after:
+                            Color:
+                                rgba: hx(app.theme_state.primary)[0], hx(app.theme_state.primary)[1], hx(app.theme_state.primary)[2], 0.08
+                            RoundedRectangle:
+                                pos: self.x + self.width * 0.58, self.y + dp(16)
+                                size: self.width * 0.34, self.height - dp(32)
+                                radius: [dp(26)]
+                            Color:
+                                rgba: hx(app.theme_state.success_soft)
+                            Line:
+                                rounded_rectangle: self.x + dp(14), self.y + dp(14), self.width - dp(28), self.height - dp(28), dp(24)
+                                width: dp(1)
+
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(46)
+                            spacing: dp(14)
+                            BoxLayout:
+                                size_hint: None, None
+                                size: dp(46), dp(46)
+                                canvas.before:
+                                    Color:
+                                        rgba: hx(app.theme_state.primary_soft)
+                                    RoundedRectangle:
+                                        pos: self.pos
+                                        size: self.size
+                                        radius: [dp(16)]
+                                Label:
+                                    text: "📊"
+                                    font_name: ds.EMOJI_FONT
+                                    color: hx(app.theme_state.primary)
+                                    font_size: "22sp"
+                                    text_size: self.size
+                                    halign: "center"
+                                    valign: "middle"
+                            BoxLayout:
+                                orientation: "vertical"
+                                spacing: dp(2)
+                                Label:
+                                    text: "Sports Analytics"
+                                    color: hx(app.theme_state.text_primary)
+                                    font_size: "26sp"
+                                    bold: True
+                                    size_hint_y: None
+                                    height: dp(30)
+                                    text_size: self.width, dp(30)
+                                    halign: "left"
+                                    valign: "middle"
+                                Label:
+                                    text: "Ocupacion, revenue, demanda por hora e insights de cancha."
+                                    color: hx(app.theme_state.text_secondary)
+                                    font_size: ds.FONT_BODY
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.width, dp(18)
+                                    halign: "left"
+                                    valign: "middle"
+                            InfoPill:
+                                size_hint_x: None
+                                width: dp(112)
+                                text: "Live stats"
+                                background_color: hx(app.theme_state.success_soft)
+                                border_color: hx(app.theme_state.success)
+
+                        Label:
+                            text: root.loading_message if root.loading else root.inline_status
+                            color: hx(app.theme_state.primary) if root.loading else hx(app.theme_state.text_muted)
+                            font_size: ds.FONT_LABEL
+                            size_hint_y: None
+                            height: dp(18)
+                            text_size: self.width, dp(18)
+                            halign: "left"
+                            valign: "middle"
+
+                    GridLayout:
+                        cols: 1 if root.width < dp(720) else 2 if root.width < dp(1180) else 4
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(14)
+                        row_default_height: dp(124)
+                        row_force_default: True
+
+                        KpiCard:
+                            id: report_revenue_card
+                        KpiCard:
+                            id: report_confirmed_card
+                        KpiCard:
+                            id: report_occupancy_card
+                        KpiCard:
+                            id: report_peak_card
+
+                    GridLayout:
+                        id: export_grid
+                        cols: 1 if root.width < dp(1050) else 2
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(16)
+
+                        CardBox:
+                            size_hint_y: None
+                            height: dp(340)
+                            padding: dp(18)
+                            spacing: dp(10)
+                            background_color: hx(app.theme_state.surface)
+                            border_color: hx(app.theme_state.primary)
+                            Label:
+                                text: "Demanda por hora"
+                                color: hx(app.theme_state.text_primary)
+                                font_size: "20sp"
+                                bold: True
+                                size_hint_y: None
+                                height: dp(24)
+                                text_size: self.width, dp(24)
+                                halign: "left"
+                                valign: "middle"
+                            BarChart:
+                                id: reports_hour_chart
+                                title: "Reservas por hora"
+                                x_axis_label: "Franja"
+                                y_axis_label: "Partidos"
+
+                        CardBox:
+                            size_hint_y: None
+                            height: dp(340)
+                            padding: dp(18)
+                            spacing: dp(14)
+                            background_color: hx(app.theme_state.surface_alt)
+                            border_color: hx(app.theme_state.border)
+                            Label:
+                                text: "Export center"
+                                color: hx(app.theme_state.text_primary)
+                                font_size: "20sp"
+                                bold: True
+                                size_hint_y: None
+                                height: dp(24)
+                                text_size: self.width, dp(24)
+                                halign: "left"
+                                valign: "middle"
+                            Label:
+                                text: "Genera archivos ejecutivos para operacion, socios y control comercial."
+                                color: hx(app.theme_state.text_muted)
+                                font_size: ds.FONT_LABEL
+                                size_hint_y: None
+                                height: dp(36)
+                                text_size: self.width, dp(36)
+                                halign: "left"
+                                valign: "top"
+                            CardBox:
+                                size_hint_y: None
+                                height: dp(92)
+                                padding: dp(14)
+                                spacing: dp(6)
+                                background_color: hx(app.theme_state.surface)
+                                border_color: hx(app.theme_state.border)
+                                shadow_offset: dp(0)
+                                Label:
+                                    text: "Estado de exportacion"
+                                    color: hx(app.theme_state.text_primary)
+                                    font_size: ds.FONT_BODY
+                                    bold: True
+                                    size_hint_y: None
+                                    height: dp(20)
+                                    text_size: self.width, dp(20)
+                                    halign: "left"
+                                    valign: "middle"
+                                Label:
+                                    text: root.export_status
+                                    color: hx(app.theme_state.text_secondary)
+                                    font_size: ds.FONT_LABEL
+                                    text_size: self.width, None
+                                    halign: "left"
+                                    valign: "top"
+                            Label:
+                                text: root.export_path_text
+                                color: hx(app.theme_state.primary)
+                                font_size: ds.FONT_LABEL
+                                size_hint_y: None
+                                height: dp(36)
+                                text_size: self.width, dp(36)
+                                halign: "left"
+                                valign: "top"
+                                shorten: True
+                                shorten_from: "left"
+                            BoxLayout:
+                                size_hint_y: None
+                                height: dp(50)
+                                spacing: dp(12)
+                                PrimaryButton:
+                                    text: "Exportar CSV"
+                                    on_release: root.export_csv()
+                                SuccessButton:
+                                    text: "Exportar PDF"
+                                    on_release: root.export_pdf()
+
+                    GridLayout:
+                        id: bottom_grid
+                        cols: 1 if root.width < dp(1020) else 3
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(16)
+
+                        CardBox:
+                            size_hint_y: None
+                            height: dp(360)
+                            padding: dp(18)
+                            spacing: dp(10)
+                            background_color: hx(app.theme_state.surface)
+                            border_color: hx(app.theme_state.border)
+                            Label:
+                                text: "Resumen operativo"
+                                color: hx(app.theme_state.text_primary)
+                                font_size: "18sp"
+                                bold: True
+                                size_hint_y: None
+                                height: dp(22)
+                                text_size: self.width, dp(22)
+                                halign: "left"
+                                valign: "middle"
+                            Label:
+                                text: root.summary_text
+                                color: hx(app.theme_state.text_secondary)
+                                font_size: ds.FONT_LABEL
+                                size_hint_y: None
+                                height: dp(150)
+                                text_size: self.width, dp(150)
+                                halign: "left"
+                                valign: "top"
+                            Widget:
+                                size_hint_y: None
+                                height: dp(2)
+                                canvas:
+                                    Color:
+                                        rgba: hx(app.theme_state.primary)
+                                    RoundedRectangle:
+                                        pos: self.pos
+                                        size: self.size
+                                        radius: [dp(2)]
+                            Label:
+                                text: root.report_text
+                                color: hx(app.theme_state.text_muted)
+                                font_size: "11sp"
+                                text_size: self.width, None
+                                halign: "left"
+                                valign: "top"
+
+                        InfoCard:
+                            id: reports_insights_card
+                            height: dp(360)
+
+                        InfoCard:
+                            id: reports_recommendations_card
+                            height: dp(360)

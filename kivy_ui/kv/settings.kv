@@ -1,0 +1,576 @@
+#:import dp kivy.metrics.dp
+#:import ds kivy_ui.theme
+#:import hx kivy.utils.get_color_from_hex
+
+<SettingsScreen>:
+    name: "settings"
+
+    BoxLayout:
+        orientation: "vertical"
+
+        ScrollView:
+            do_scroll_x: False
+            bar_width: dp(6)
+
+            AnchorLayout:
+                anchor_x: "center"
+                anchor_y: "top"
+                size_hint_y: None
+                height: content.height
+
+                BoxLayout:
+                    id: content
+                    orientation: "vertical"
+                    size_hint: None, None
+                    width: min(root.width - dp(48), ds.MAX_CONTENT_WIDTH)
+                    height: self.minimum_height
+                    padding: dp(24)
+                    spacing: dp(22)
+
+                    CardBox:
+                        size_hint_y: None
+                        height: dp(150)
+                        padding: dp(24)
+                        spacing: dp(10)
+                        background_color: hx(app.theme_state.surface_alt)
+                        border_color: hx(app.theme_state.primary)
+                        shadow_offset: dp(3)
+                        canvas.after:
+                            Color:
+                                rgba: hx(app.theme_state.primary)[0], hx(app.theme_state.primary)[1], hx(app.theme_state.primary)[2], 0.08
+                            RoundedRectangle:
+                                pos: self.x + self.width * 0.62, self.y + dp(16)
+                                size: self.width * 0.3, self.height - dp(32)
+                                radius: [dp(28)]
+                            Color:
+                                rgba: hx(app.theme_state.success_soft)
+                            Line:
+                                rounded_rectangle: self.x + dp(14), self.y + dp(14), self.width - dp(28), self.height - dp(28), dp(24)
+                                width: dp(1)
+
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(48)
+                            spacing: dp(14)
+                            BoxLayout:
+                                size_hint: None, None
+                                size: dp(46), dp(46)
+                                canvas.before:
+                                    Color:
+                                        rgba: hx(app.theme_state.primary_soft)
+                                    RoundedRectangle:
+                                        pos: self.pos
+                                        size: self.size
+                                        radius: [dp(16)]
+                                Label:
+                                    text: "⚙"
+                                    font_name: ds.EMOJI_FONT
+                                    color: hx(app.theme_state.primary)
+                                    font_size: "22sp"
+                                    text_size: self.size
+                                    halign: "center"
+                                    valign: "middle"
+                            BoxLayout:
+                                orientation: "vertical"
+                                spacing: dp(2)
+                                Label:
+                                    text: "Configuracion deportiva"
+                                    color: hx(app.theme_state.text_primary)
+                                    font_size: "26sp"
+                                    bold: True
+                                    size_hint_y: None
+                                    height: dp(30)
+                                    text_size: self.width, dp(30)
+                                    halign: "left"
+                                    valign: "middle"
+                                Label:
+                                    text: "Pricing, reglas del club, experiencia visual y cuenta activa."
+                                    color: hx(app.theme_state.text_secondary)
+                                    font_size: ds.FONT_BODY
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.width, dp(18)
+                                    halign: "left"
+                                    valign: "middle"
+                            InfoPill:
+                                size_hint_x: None
+                                width: dp(132)
+                                text: "Admin console"
+                                background_color: hx(app.theme_state.primary_soft)
+                                border_color: hx(app.theme_state.primary)
+
+                        Label:
+                            text: root.loading_message if root.loading else root.inline_status
+                            color: hx(app.theme_state.primary) if root.loading else hx(app.theme_state.text_muted)
+                            font_size: ds.FONT_LABEL
+                            size_hint_y: None
+                            height: dp(18)
+                            text_size: self.width, dp(18)
+                            halign: "left"
+                            valign: "middle"
+
+                    BoxLayout:
+                        id: content_grid
+                        orientation: "vertical" if root.width < dp(1200) else "horizontal"
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(18)
+
+                        CardBox:
+                            id: tariffs_card
+                            size_hint_y: None
+                            height: self.minimum_height
+                            pos_hint: {"top": 1}
+                            padding: dp(20)
+                            spacing: dp(16)
+                            background_color: hx(app.theme_state.surface)
+                            border_color: hx(app.theme_state.primary)
+                            shadow_offset: dp(2)
+
+                            BoxLayout:
+                                size_hint_y: None
+                                height: dp(48)
+                                spacing: dp(12)
+                                BoxLayout:
+                                    size_hint_x: None
+                                    width: dp(42)
+                                    canvas.before:
+                                        Color:
+                                            rgba: hx(app.theme_state.primary_soft)
+                                        RoundedRectangle:
+                                            pos: self.pos
+                                            size: self.size
+                                            radius: [dp(15)]
+                                    Label:
+                                        text: "$"
+                                        color: hx(app.theme_state.primary)
+                                        font_size: "22sp"
+                                        bold: True
+                                        text_size: self.size
+                                        halign: "center"
+                                        valign: "middle"
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    spacing: dp(2)
+                                    Label:
+                                        text: "Pricing engine"
+                                        color: hx(app.theme_state.text_primary)
+                                        font_size: "20sp"
+                                        bold: True
+                                        size_hint_y: None
+                                        height: dp(24)
+                                        text_size: self.width, dp(24)
+                                        halign: "left"
+                                        valign: "middle"
+                                    Label:
+                                        text: "Tarifas por jornada, recargos y descuento grupal."
+                                        color: hx(app.theme_state.text_muted)
+                                        font_size: ds.FONT_LABEL
+                                        size_hint_y: None
+                                        height: dp(18)
+                                        text_size: self.width, dp(18)
+                                        halign: "left"
+                                        valign: "middle"
+
+                            GridLayout:
+                                cols: 1 if root.width < dp(980) else 2
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(14)
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    size_hint_y: None
+                                    height: dp(88)
+                                    spacing: dp(7)
+                                    Label:
+                                        text: "Manana COP"
+                                        color: hx(app.theme_state.text_secondary)
+                                        font_size: ds.FONT_LABEL
+                                        bold: True
+                                        size_hint_y: None
+                                        height: dp(18)
+                                        text_size: self.size
+                                        halign: "left"
+                                        valign: "middle"
+                                    AppTextInput:
+                                        id: morning_input
+                                        input_filter: "float"
+                                    Widget:
+                                        size_hint_y: None
+                                        height: dp(5)
+                                        canvas:
+                                            Color:
+                                                rgba: hx(app.theme_state.primary_soft)
+                                            RoundedRectangle:
+                                                pos: self.pos
+                                                size: self.width * 0.58, self.height
+                                                radius: [dp(3)]
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    size_hint_y: None
+                                    height: dp(88)
+                                    spacing: dp(7)
+                                    Label:
+                                        text: "Tarde COP"
+                                        color: hx(app.theme_state.text_secondary)
+                                        font_size: ds.FONT_LABEL
+                                        bold: True
+                                        size_hint_y: None
+                                        height: dp(18)
+                                        text_size: self.size
+                                        halign: "left"
+                                        valign: "middle"
+                                    AppTextInput:
+                                        id: afternoon_input
+                                        input_filter: "float"
+                                    Widget:
+                                        size_hint_y: None
+                                        height: dp(5)
+                                        canvas:
+                                            Color:
+                                                rgba: hx(app.theme_state.primary)
+                                            RoundedRectangle:
+                                                pos: self.pos
+                                                size: self.width * 0.74, self.height
+                                                radius: [dp(3)]
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    size_hint_y: None
+                                    height: dp(88)
+                                    spacing: dp(7)
+                                    Label:
+                                        text: "Noche prime COP"
+                                        color: hx(app.theme_state.text_secondary)
+                                        font_size: ds.FONT_LABEL
+                                        bold: True
+                                        size_hint_y: None
+                                        height: dp(18)
+                                        text_size: self.size
+                                        halign: "left"
+                                        valign: "middle"
+                                    AppTextInput:
+                                        id: night_input
+                                        input_filter: "float"
+                                    Widget:
+                                        size_hint_y: None
+                                        height: dp(5)
+                                        canvas:
+                                            Color:
+                                                rgba: hx(app.theme_state.success)
+                                            RoundedRectangle:
+                                                pos: self.pos
+                                                size: self.width * 0.92, self.height
+                                                radius: [dp(3)]
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    size_hint_y: None
+                                    height: dp(88)
+                                    spacing: dp(7)
+                                    Label:
+                                        text: "Weekend uplift %"
+                                        color: hx(app.theme_state.text_secondary)
+                                        font_size: ds.FONT_LABEL
+                                        bold: True
+                                        size_hint_y: None
+                                        height: dp(18)
+                                        text_size: self.size
+                                        halign: "left"
+                                        valign: "middle"
+                                    AppTextInput:
+                                        id: weekend_input
+                                        input_filter: "float"
+                                    Widget:
+                                        size_hint_y: None
+                                        height: dp(5)
+                                        canvas:
+                                            Color:
+                                                rgba: hx(app.theme_state.warning)
+                                            RoundedRectangle:
+                                                pos: self.pos
+                                                size: self.width * 0.36, self.height
+                                                radius: [dp(3)]
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    size_hint_y: None
+                                    height: dp(88)
+                                    spacing: dp(7)
+                                    Label:
+                                        text: "Grupo desde"
+                                        color: hx(app.theme_state.text_secondary)
+                                        font_size: ds.FONT_LABEL
+                                        bold: True
+                                        size_hint_y: None
+                                        height: dp(18)
+                                        text_size: self.size
+                                        halign: "left"
+                                        valign: "middle"
+                                    AppTextInput:
+                                        id: bulk_threshold_input
+                                        input_filter: "int"
+                                    Widget:
+                                        size_hint_y: None
+                                        height: dp(5)
+                                        canvas:
+                                            Color:
+                                                rgba: hx(app.theme_state.primary_soft)
+                                            RoundedRectangle:
+                                                pos: self.pos
+                                                size: self.width * 0.46, self.height
+                                                radius: [dp(3)]
+
+                                BoxLayout:
+                                    orientation: "vertical"
+                                    size_hint_y: None
+                                    height: dp(88)
+                                    spacing: dp(7)
+                                    Label:
+                                        text: "Descuento grupo %"
+                                        color: hx(app.theme_state.text_secondary)
+                                        font_size: ds.FONT_LABEL
+                                        bold: True
+                                        size_hint_y: None
+                                        height: dp(18)
+                                        text_size: self.size
+                                        halign: "left"
+                                        valign: "middle"
+                                    AppTextInput:
+                                        id: bulk_discount_input
+                                        input_filter: "float"
+                                    Widget:
+                                        size_hint_y: None
+                                        height: dp(5)
+                                        canvas:
+                                            Color:
+                                                rgba: hx(app.theme_state.success_soft)
+                                            RoundedRectangle:
+                                                pos: self.pos
+                                                size: self.width * 0.68, self.height
+                                                radius: [dp(3)]
+
+                            CardBox:
+                                size_hint_y: None
+                                height: dp(128)
+                                padding: dp(16)
+                                spacing: dp(12)
+                                background_color: hx(app.theme_state.surface_alt)
+                                border_color: hx(app.theme_state.border)
+                                shadow_offset: dp(0)
+                                BoxLayout:
+                                    size_hint_y: None
+                                    height: dp(40)
+                                    spacing: dp(12)
+                                    BoxLayout:
+                                        orientation: "vertical"
+                                        spacing: dp(1)
+                                        Label:
+                                            text: "Acceso familiar"
+                                            color: hx(app.theme_state.text_primary)
+                                            font_size: ds.FONT_BODY
+                                            bold: True
+                                            size_hint_y: None
+                                            height: dp(20)
+                                            text_size: self.width, dp(20)
+                                            halign: "left"
+                                            valign: "middle"
+                                        Label:
+                                            text: "Permitir ingreso de ninos al complejo."
+                                            color: hx(app.theme_state.text_muted)
+                                            font_size: "11sp"
+                                            size_hint_y: None
+                                            height: dp(16)
+                                            text_size: self.width, dp(16)
+                                            halign: "left"
+                                            valign: "middle"
+                                    SportsToggle:
+                                        id: children_switch
+                                BoxLayout:
+                                    size_hint_y: None
+                                    height: dp(40)
+                                    spacing: dp(12)
+                                    BoxLayout:
+                                        orientation: "vertical"
+                                        spacing: dp(1)
+                                        Label:
+                                            text: "Mascotas"
+                                            color: hx(app.theme_state.text_primary)
+                                            font_size: ds.FONT_BODY
+                                            bold: True
+                                            size_hint_y: None
+                                            height: dp(20)
+                                            text_size: self.width, dp(20)
+                                            halign: "left"
+                                            valign: "middle"
+                                        Label:
+                                            text: "Habilitar ingreso pet friendly."
+                                            color: hx(app.theme_state.text_muted)
+                                            font_size: "11sp"
+                                            size_hint_y: None
+                                            height: dp(16)
+                                            text_size: self.width, dp(16)
+                                            halign: "left"
+                                            valign: "middle"
+                                    SportsToggle:
+                                        id: pets_switch
+
+                            BoxLayout:
+                                size_hint_y: None
+                                height: dp(50)
+                                spacing: dp(12)
+                                PrimaryButton:
+                                    text: "Guardar cambios"
+                                    on_release: root.save_settings()
+                                SecondaryButton:
+                                    text: "Restaurar"
+                                    on_release: root.restore_defaults()
+
+                        GridLayout:
+                            id: settings_side
+                            cols: 1
+                            size_hint_y: None
+                            height: self.minimum_height
+                            pos_hint: {"top": 1}
+                            spacing: dp(16)
+
+                            CardBox:
+                                size_hint_y: None
+                                height: self.minimum_height
+                                padding: dp(18)
+                                spacing: dp(10)
+                                background_color: hx(app.theme_state.surface)
+                                border_color: hx(app.theme_state.primary)
+                                Label:
+                                    text: "Club deportivo"
+                                    color: hx(app.theme_state.text_primary)
+                                    font_size: "18sp"
+                                    bold: True
+                                    size_hint_y: None
+                                    height: dp(22)
+                                    text_size: self.width, dp(22)
+                                    halign: "left"
+                                    valign: "middle"
+                                Label:
+                                    text: root.preview_text
+                                    color: hx(app.theme_state.text_secondary)
+                                    font_size: ds.FONT_LABEL
+                                    size_hint_y: None
+                                    height: self.texture_size[1]
+                                    text_size: self.width, None
+                                    halign: "left"
+                                    valign: "top"
+                                Label:
+                                    text: root.location_text
+                                    color: hx(app.theme_state.text_muted)
+                                    font_size: ds.FONT_LABEL
+                                    size_hint_y: None
+                                    height: self.texture_size[1]
+                                    text_size: self.width, None
+                                    halign: "left"
+                                    valign: "top"
+
+                            CardBox:
+                                size_hint_y: None
+                                height: self.minimum_height
+                                padding: dp(18)
+                                spacing: dp(10)
+                                background_color: hx(app.theme_state.surface_alt)
+                                border_color: hx(app.theme_state.border)
+                                Label:
+                                    text: "Reglas del complejo"
+                                    color: hx(app.theme_state.text_primary)
+                                    font_size: "18sp"
+                                    bold: True
+                                    size_hint_y: None
+                                    height: dp(22)
+                                    text_size: self.width, dp(22)
+                                    halign: "left"
+                                    valign: "middle"
+                                Label:
+                                    text: root.rules_text
+                                    color: hx(app.theme_state.text_secondary)
+                                    font_size: ds.FONT_LABEL
+                                    size_hint_y: None
+                                    height: self.texture_size[1]
+                                    text_size: self.width, None
+                                    halign: "left"
+                                    valign: "top"
+
+                            CardBox:
+                                size_hint_y: None
+                                height: dp(190)
+                                padding: dp(18)
+                                spacing: dp(10)
+                                background_color: hx(app.theme_state.surface)
+                                border_color: hx(app.theme_state.primary)
+                                Label:
+                                    text: root.active_theme_text
+                                    color: hx(app.theme_state.primary)
+                                    font_size: "18sp"
+                                    bold: True
+                                    size_hint_y: None
+                                    height: dp(22)
+                                    text_size: self.width, dp(22)
+                                    halign: "left"
+                                    valign: "middle"
+                                Label:
+                                    text: root.theme_note_text
+                                    color: hx(app.theme_state.text_muted)
+                                    font_size: ds.FONT_LABEL
+                                    text_size: self.width, None
+                                    halign: "left"
+                                    valign: "top"
+                                BoxLayout:
+                                    size_hint_y: None
+                                    height: dp(50)
+                                    spacing: dp(12)
+                                    SoftButton:
+                                        text: "Dark"
+                                        variant: root.dark_button_variant
+                                        on_release: root.activate_dark_theme()
+                                    SoftButton:
+                                        text: "Light"
+                                        variant: root.light_button_variant
+                                        on_release: root.activate_light_theme()
+
+                            CardBox:
+                                size_hint_y: None
+                                height: dp(180)
+                                padding: dp(18)
+                                spacing: dp(8)
+                                background_color: hx(app.theme_state.surface_alt)
+                                border_color: hx(app.theme_state.border)
+                                Label:
+                                    text: root.account_name_text
+                                    color: hx(app.theme_state.text_primary)
+                                    font_size: "18sp"
+                                    bold: True
+                                    size_hint_y: None
+                                    height: dp(22)
+                                    text_size: self.width, dp(22)
+                                    halign: "left"
+                                    valign: "middle"
+                                Label:
+                                    text: root.account_email_text
+                                    color: hx(app.theme_state.text_secondary)
+                                    font_size: ds.FONT_LABEL
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.width, dp(18)
+                                    halign: "left"
+                                    valign: "middle"
+                                Label:
+                                    text: root.account_role_text
+                                    color: hx(app.theme_state.text_muted)
+                                    font_size: ds.FONT_LABEL
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.width, dp(18)
+                                    halign: "left"
+                                    valign: "middle"
+                                DangerButton:
+                                    text: "Cerrar sesion"
+                                    on_release: root.logout()

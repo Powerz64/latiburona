@@ -1,0 +1,219 @@
+#:import dp kivy.metrics.dp
+#:import NoTransition kivy.uix.screenmanager.NoTransition
+#:import ds kivy_ui.theme
+#:import hx kivy.utils.get_color_from_hex
+
+<ShellScreen>:
+    canvas.before:
+        Color:
+            rgba: hx(app.theme_state.app_bg)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: hx(app.theme_state.primary_soft)
+        Line:
+            points: self.x + dp(250), self.y + dp(36), self.right, self.y + dp(36)
+            width: dp(1)
+        Color:
+            rgba: hx(app.theme_state.success_soft)
+        Line:
+            points: self.x + dp(250), self.top - dp(42), self.right, self.top - dp(42)
+            width: dp(1)
+
+    BoxLayout:
+        orientation: "horizontal"
+
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_x: None
+            width: ds.SIDEBAR_WIDTH
+            padding: dp(18)
+            spacing: dp(16)
+            canvas.before:
+                Color:
+                    rgba: hx(app.theme_state.sidebar)
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+            BoxLayout:
+                size_hint_y: None
+                height: dp(74)
+                spacing: dp(12)
+
+                BoxLayout:
+                    size_hint: None, None
+                    size: dp(56), dp(56)
+                    canvas.before:
+                        Color:
+                            rgba: hx(app.theme_state.success_soft)
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(18)]
+                    Label:
+                        text: "⚽"
+                        font_name: ds.EMOJI_FONT
+                        color: hx(app.theme_state.success)
+                        font_size: "24sp"
+                        text_size: self.size
+                        halign: "center"
+                        valign: "middle"
+
+                BoxLayout:
+                    orientation: "vertical"
+                    spacing: dp(2)
+                    Label:
+                        text: "LaTiburona"
+                        color: hx(app.theme_state.text_primary)
+                        font_size: "22sp"
+                        bold: True
+                        size_hint_y: None
+                        height: dp(28)
+                        text_size: self.width, dp(28)
+                        halign: "left"
+                        valign: "middle"
+                    Label:
+                        text: "Sports booking SaaS"
+                        color: hx(app.theme_state.text_muted)
+                        font_size: ds.FONT_LABEL
+                        size_hint_y: None
+                        height: dp(18)
+                        text_size: self.width, dp(18)
+                        halign: "left"
+                        valign: "middle"
+                    Label:
+                        text: "Barranquilla, Colombia"
+                        color: hx(app.theme_state.text_secondary)
+                        font_size: ds.FONT_LABEL
+                        size_hint_y: None
+                        height: dp(18)
+                        text_size: self.width, dp(18)
+                        halign: "left"
+                        valign: "middle"
+
+            BoxLayout:
+                id: nav_list
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: dp(10)
+
+            Widget:
+
+            CardBox:
+                size_hint_y: None
+                height: dp(120)
+                padding: dp(16)
+                spacing: dp(8)
+                background_color: hx(app.theme_state.surface)
+                border_color: hx(app.theme_state.border)
+                shadow_offset: dp(0)
+
+                Label:
+                    text: root.current_user_text
+                    color: hx(app.theme_state.text_primary)
+                    font_size: "16sp"
+                    bold: True
+                    size_hint_y: None
+                    height: dp(22)
+                    text_size: self.width, dp(22)
+                    halign: "left"
+                    valign: "middle"
+
+                Label:
+                    text: root.current_mode_text
+                    color: hx(app.theme_state.primary)
+                    font_size: ds.FONT_LABEL
+                    size_hint_y: None
+                    height: dp(18)
+                    text_size: self.width, dp(18)
+                    halign: "left"
+                    valign: "middle"
+
+                Label:
+                    text: "Operación deportiva lista para partidos, torneos y turnos nocturnos."
+                    color: hx(app.theme_state.text_muted)
+                    font_size: ds.FONT_LABEL
+                    text_size: self.width, None
+                    halign: "left"
+                    valign: "top"
+
+        BoxLayout:
+            orientation: "vertical"
+            padding: dp(20)
+            spacing: dp(16)
+
+            CardBox:
+                size_hint_y: None
+                height: dp(94)
+                padding: dp(20)
+                spacing: dp(6)
+                background_color: hx(app.theme_state.surface_alt)
+                border_color: hx(app.theme_state.primary)
+                shadow_offset: dp(2)
+
+                Label:
+                    text: root.page_title
+                    font_name: ds.EMOJI_FONT
+                    color: hx(app.theme_state.text_primary)
+                    font_size: "24sp"
+                    bold: True
+                    size_hint_y: None
+                    height: dp(30)
+                    text_size: self.width, dp(30)
+                    halign: "left"
+                    valign: "middle"
+
+                Label:
+                    text: root.page_subtitle
+                    color: hx(app.theme_state.text_muted)
+                    font_size: ds.FONT_BODY
+                    size_hint_y: None
+                    height: dp(22)
+                    text_size: self.width, dp(22)
+                    halign: "left"
+                    valign: "middle"
+
+            BoxLayout:
+                size_hint_y: None
+                height: dp(46) if root.offline_banner_visible else 0
+                opacity: 1 if root.offline_banner_visible else 0
+                padding: dp(16), dp(10)
+                canvas.before:
+                    Color:
+                        rgba: hx(app.theme_state.warning_soft)
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(16)]
+
+                Label:
+                    text: root.offline_banner_text
+                    color: hx(app.theme_state.warning)
+                    bold: True
+                    font_size: ds.FONT_LABEL
+                    text_size: self.size
+                    halign: "left"
+                    valign: "middle"
+
+            ScreenManager:
+                id: inner_sm
+                transition: NoTransition()
+
+            CardBox:
+                size_hint_y: None
+                height: dp(48)
+                padding: dp(16), dp(10)
+                background_color: hx(app.theme_state.surface)
+                border_color: hx(app.theme_state.border)
+                shadow_offset: dp(0)
+
+                Label:
+                    text: root.status_text
+                    color: hx(app.theme_state.text_secondary)
+                    font_size: ds.FONT_LABEL
+                    text_size: self.size
+                    halign: "left"
+                    valign: "middle"

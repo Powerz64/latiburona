@@ -1,0 +1,181 @@
+#:import dp kivy.metrics.dp
+#:import ds kivy_ui.theme
+#:import hx kivy.utils.get_color_from_hex
+
+<DashboardScreen>:
+    name: "dashboard"
+
+    BoxLayout:
+        orientation: "vertical"
+
+        ScrollView:
+            do_scroll_x: False
+            bar_width: dp(6)
+
+            AnchorLayout:
+                anchor_x: "center"
+                anchor_y: "top"
+                size_hint_y: None
+                height: content.height
+
+                BoxLayout:
+                    id: content
+                    orientation: "vertical"
+                    size_hint: None, None
+                    width: min(root.width - dp(48), ds.MAX_CONTENT_WIDTH)
+                    height: self.minimum_height
+                    padding: dp(24)
+                    spacing: dp(22)
+
+                    GridLayout:
+                        id: command_grid
+                        cols: 1 if root.width < dp(1180) else 2
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(16)
+
+                        SportsHeroCard:
+                            id: sports_hero
+                            height: dp(390) if root.width >= dp(1180) else dp(304)
+                            image_source: ds.FIELD_IMAGES["hero"]
+                            title_text: "Reserva tu cancha favorita"
+                            subtitle_text: "Gestiona partidos, horarios y torneos con energia de estadio."
+                            meta_text: root.loading_message if root.loading else root.inline_status
+
+                        LiveOccupancyCard:
+                            id: live_occupancy_card
+
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(34)
+                        spacing: dp(10)
+                        Label:
+                            text: "🏟"
+                            font_name: ds.EMOJI_FONT
+                            color: hx(app.theme_state.success)
+                            font_size: "22sp"
+                            size_hint_x: None
+                            width: dp(30)
+                            text_size: self.size
+                            halign: "center"
+                            valign: "middle"
+                        Label:
+                            text: "Canchas destacadas"
+                            color: hx(app.theme_state.text_primary)
+                            font_size: "22sp"
+                            bold: True
+                            text_size: self.size
+                            halign: "left"
+                            valign: "middle"
+                        Widget:
+                        Label:
+                            text: "Barranquilla Sports Network"
+                            color: hx(app.theme_state.primary)
+                            font_size: ds.FONT_LABEL
+                            size_hint_x: None
+                            width: dp(210)
+                            text_size: self.width, self.height
+                            halign: "right"
+                            valign: "middle"
+
+                    GridLayout:
+                        id: field_cards_grid
+                        cols: 1 if root.width < dp(760) else 2 if root.width < dp(1180) else 5
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(12)
+                        row_default_height: dp(304)
+                        row_force_default: True
+
+                        FieldCard:
+                            field_name: "La Jaula Barranquilla"
+                            address_text: "Via 40 # 85-470"
+                            location_text: "Riomar, Barranquilla"
+                            availability_text: "Alta demanda"
+                            occupancy_text: "82% ocupada"
+                            slots_text: "3 slots libres esta noche"
+                            occupancy_ratio: 0.82
+                            image_source: ds.FIELD_IMAGES["la_jaula"]
+                            tone: "success"
+
+                        FieldCard:
+                            field_name: "Brazuca Soccer"
+                            address_text: "Calle 3 # 23-90"
+                            location_text: "Villa Campestre"
+                            availability_text: "Disponible"
+                            occupancy_text: "57% ocupada"
+                            slots_text: "6 slots abiertos"
+                            occupancy_ratio: 0.57
+                            image_source: ds.FIELD_IMAGES["brazuca"]
+                            tone: "primary"
+
+                        FieldCard:
+                            field_name: "Brasileirao"
+                            address_text: "Carrera 46 # 76-109"
+                            location_text: "Norte Centro Historico"
+                            availability_text: "Nocturna"
+                            occupancy_text: "74% ocupada"
+                            slots_text: "4 slots prime"
+                            occupancy_ratio: 0.74
+                            image_source: ds.FIELD_IMAGES["brasileirao"]
+                            tone: "success"
+
+                        FieldCard:
+                            field_name: "La Castellana"
+                            address_text: "Carrera 53 # 94-160"
+                            location_text: "La Castellana"
+                            availability_text: "Top noche"
+                            occupancy_text: "69% ocupada"
+                            slots_text: "5 slots listos"
+                            occupancy_ratio: 0.69
+                            image_source: ds.FIELD_IMAGES["castellana"]
+                            tone: "primary"
+
+                        FieldCard:
+                            field_name: "Soccer House"
+                            address_text: "Calle 25 # 3-126"
+                            location_text: "Suroriente"
+                            availability_text: "Lista"
+                            occupancy_text: "46% ocupada"
+                            slots_text: "8 slots disponibles"
+                            occupancy_ratio: 0.46
+                            image_source: ds.FIELD_IMAGES["soccer_house"]
+                            tone: "success"
+
+                    GridLayout:
+                        id: dash_kpi_grid
+                        cols: 1 if root.width < dp(720) else 2 if root.width < dp(1180) else 4
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(14)
+                        row_default_height: dp(122)
+                        row_force_default: True
+
+                        KpiCard:
+                            id: revenue_card
+
+                        KpiCard:
+                            id: total_reservations_card
+
+                        KpiCard:
+                            id: occupancy_card
+
+                        KpiCard:
+                            id: peak_hour_card
+
+                    DemandCard:
+                        id: demand_card
+
+                    GridLayout:
+                        cols: 1 if root.width < dp(980) else 2
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(14)
+
+                        InfoCard:
+                            id: insights_card
+                            height: dp(180)
+
+                        InfoCard:
+                            id: recommendations_card
+                            height: dp(180)

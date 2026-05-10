@@ -1,0 +1,245 @@
+#:import dp kivy.metrics.dp
+#:import ds kivy_ui.theme
+#:import hx kivy.utils.get_color_from_hex
+
+<TournamentsScreen>:
+    name: "tournaments"
+
+    BoxLayout:
+        orientation: "vertical"
+
+        ScrollView:
+            do_scroll_x: False
+            bar_width: dp(6)
+
+            AnchorLayout:
+                anchor_x: "center"
+                anchor_y: "top"
+                size_hint_y: None
+                height: content.height
+
+                BoxLayout:
+                    id: content
+                    orientation: "vertical"
+                    size_hint: None, None
+                    width: min(root.width - dp(48), ds.MAX_CONTENT_WIDTH)
+                    height: self.minimum_height
+                    padding: dp(24)
+                    spacing: dp(28)
+
+                    CardBox:
+                        size_hint_y: None
+                        height: self.minimum_height
+                        padding: dp(20)
+                        spacing: dp(8)
+                        background_color: hx(app.theme_state.surface_alt)
+                        border_color: hx(app.theme_state.success)
+                        shadow_offset: dp(2)
+
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(30)
+                            spacing: dp(10)
+                            Label:
+                                text: "🏆"
+                                font_name: ds.EMOJI_FONT
+                                color: hx(app.theme_state.primary)
+                                font_size: "22sp"
+                                size_hint_x: None
+                                width: dp(28)
+                                text_size: self.size
+                                halign: "center"
+                                valign: "middle"
+                            Label:
+                                text: "Torneos"
+                                color: hx(app.theme_state.text_primary)
+                                font_size: "26sp"
+                                bold: True
+                                text_size: self.size
+                                halign: "left"
+                                valign: "middle"
+
+                        Label:
+                            text: "Crea ligas internas, llaves y torneos con identidad de club nocturno."
+                            color: hx(app.theme_state.text_secondary)
+                            font_size: ds.FONT_BODY
+                            size_hint_y: None
+                            height: dp(22)
+                            text_size: self.width, dp(22)
+                            halign: "left"
+                            valign: "middle"
+
+                        Label:
+                            text: root.loading_message if root.loading else root.inline_status
+                            color: hx(app.theme_state.primary) if root.loading else hx(app.theme_state.text_muted)
+                            font_size: ds.FONT_LABEL
+                            size_hint_y: None
+                            height: dp(18)
+                            text_size: self.width, dp(18)
+                            halign: "left"
+                            valign: "middle"
+
+                    GridLayout:
+                        id: content_grid
+                        cols: 2
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(24)
+
+                        CardBox:
+                            size_hint_y: None
+                            height: self.minimum_height
+                            padding: dp(20)
+                            spacing: dp(14)
+                            background_color: hx(app.theme_state.surface)
+                            border_color: hx(app.theme_state.border)
+
+                            Label:
+                                text: "🏆 " + root.form_heading
+                                font_name: ds.EMOJI_FONT
+                                color: hx(app.theme_state.text_primary)
+                                font_size: "20sp"
+                                bold: True
+                                size_hint_y: None
+                                height: dp(24)
+                                text_size: self.width, dp(24)
+                                halign: "left"
+                                valign: "middle"
+
+                            Label:
+                                text: "Nombre del torneo"
+                                color: hx(app.theme_state.text_secondary)
+                                font_size: ds.FONT_LABEL
+                                size_hint_y: None
+                                height: dp(18)
+                                text_size: self.size
+                                halign: "left"
+                                valign: "middle"
+                            AppTextInput:
+                                id: name_input
+                                hint_text: "Ej. Copa Tiburona Nocturna"
+
+                            Label:
+                                text: "Categoria"
+                                color: hx(app.theme_state.text_secondary)
+                                font_size: ds.FONT_LABEL
+                                size_hint_y: None
+                                height: dp(18)
+                                text_size: self.size
+                                halign: "left"
+                                valign: "middle"
+                            AppSpinner:
+                                id: category_spinner
+                                values: root.category_options
+                                text: root.category_options[0]
+
+                            Label:
+                                text: "Estado"
+                                color: hx(app.theme_state.text_secondary)
+                                font_size: ds.FONT_LABEL
+                                size_hint_y: None
+                                height: dp(18)
+                                text_size: self.size
+                                halign: "left"
+                                valign: "middle"
+                            AppSpinner:
+                                id: status_spinner
+                                values: root.status_options
+                                text: root.status_options[0]
+
+                            Label:
+                                text: "Participantes"
+                                color: hx(app.theme_state.text_secondary)
+                                font_size: ds.FONT_LABEL
+                                size_hint_y: None
+                                height: dp(18)
+                                text_size: self.size
+                                halign: "left"
+                                valign: "middle"
+                            AppTextInput:
+                                id: participants_input
+                                multiline: True
+                                size_hint_y: None
+                                height: dp(196)
+                                hint_text: "Equipo A\nEquipo B\nEquipo C"
+
+                            InfoPill:
+                                text: root.participant_count_text
+
+                            BoxLayout:
+                                size_hint_y: None
+                                height: dp(48)
+                                spacing: dp(12)
+                                PrimaryButton:
+                                    text: root.save_button_text
+                                    on_release: root.save_tournament()
+                                SecondaryButton:
+                                    text: "Limpiar"
+                                    on_release: root.clear_form()
+
+                        CardBox:
+                            size_hint_y: None
+                            height: self.minimum_height
+                            padding: dp(20)
+                            spacing: dp(14)
+                            background_color: hx(app.theme_state.surface)
+                            border_color: hx(app.theme_state.border)
+
+                            Label:
+                                text: "Torneos registrados"
+                                color: hx(app.theme_state.text_primary)
+                                font_size: "20sp"
+                                bold: True
+                                size_hint_y: None
+                                height: dp(24)
+                                text_size: self.width, dp(24)
+                                halign: "left"
+                                valign: "middle"
+
+                            Label:
+                                text: root.summary_text
+                                color: hx(app.theme_state.text_muted)
+                                font_size: ds.FONT_LABEL
+                                size_hint_y: None
+                                height: dp(36)
+                                text_size: self.width, None
+                                halign: "left"
+                                valign: "top"
+
+                            Widget:
+                                size_hint_y: None
+                                height: dp(8)
+
+                            CardBox:
+                                size_hint_y: None
+                                height: dp(120) if not root.has_tournaments else 0
+                                opacity: 0 if root.has_tournaments else 1
+                                padding: dp(16)
+                                spacing: dp(8)
+                                background_color: hx(app.theme_state.surface_alt)
+                                border_color: hx(app.theme_state.border)
+                                shadow_offset: dp(0)
+                                Label:
+                                    text: "Sin torneos"
+                                    color: hx(app.theme_state.text_primary)
+                                    font_size: "18sp"
+                                    bold: True
+                                    size_hint_y: None
+                                    height: dp(22)
+                                    text_size: self.width, dp(22)
+                                    halign: "left"
+                                    valign: "middle"
+                                Label:
+                                    text: "Aun no se han creado torneos en este entorno."
+                                    color: hx(app.theme_state.text_muted)
+                                    font_size: ds.FONT_LABEL
+                                    text_size: self.width, None
+                                    halign: "left"
+                                    valign: "top"
+
+                            BoxLayout:
+                                id: tournaments_list
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(14)

@@ -1,0 +1,306 @@
+#:import dp kivy.metrics.dp
+#:import ds kivy_ui.theme
+#:import hx kivy.utils.get_color_from_hex
+
+<CalendarScreen>:
+    name: "calendar"
+
+    BoxLayout:
+        orientation: "vertical"
+
+        ScrollView:
+            do_scroll_x: False
+            bar_width: dp(6)
+
+            AnchorLayout:
+                anchor_x: "center"
+                anchor_y: "top"
+                size_hint_y: None
+                height: content.height
+
+                BoxLayout:
+                    id: content
+                    orientation: "vertical"
+                    size_hint: None, None
+                    width: min(root.width - dp(48), ds.MAX_CONTENT_WIDTH)
+                    height: self.minimum_height
+                    padding: dp(24)
+                    spacing: dp(24)
+
+                    CardBox:
+                        size_hint_y: None
+                        height: self.minimum_height
+                        padding: dp(20)
+                        spacing: dp(8)
+                        background_color: hx(app.theme_state.surface_alt)
+                        border_color: hx(app.theme_state.primary)
+                        shadow_offset: dp(2)
+
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(30)
+                            spacing: dp(10)
+                            Label:
+                                text: "🏟"
+                                font_name: ds.EMOJI_FONT
+                                color: hx(app.theme_state.primary)
+                                font_size: "22sp"
+                                size_hint_x: None
+                                width: dp(28)
+                                text_size: self.size
+                                halign: "center"
+                                valign: "middle"
+                            Label:
+                                text: "Calendario de canchas"
+                                color: hx(app.theme_state.text_primary)
+                                font_size: "26sp"
+                                bold: True
+                                text_size: self.size
+                                halign: "left"
+                                valign: "middle"
+
+                        Label:
+                            text: "Disponibilidad semanal por cancha, franja horaria y jornada deportiva."
+                            color: hx(app.theme_state.text_secondary)
+                            font_size: ds.FONT_BODY
+                            size_hint_y: None
+                            height: dp(22)
+                            text_size: self.width, dp(22)
+                            halign: "left"
+                            valign: "middle"
+
+                        Label:
+                            text: root.loading_message if root.loading else root.inline_status
+                            color: hx(app.theme_state.primary) if root.loading else hx(app.theme_state.text_muted)
+                            font_size: ds.FONT_LABEL
+                            size_hint_y: None
+                            height: dp(18)
+                            text_size: self.width, dp(18)
+                            halign: "left"
+                            valign: "middle"
+
+                    CardBox:
+                        size_hint_y: None
+                        height: self.minimum_height
+                        padding: dp(20)
+                        spacing: dp(14)
+                        background_color: hx(app.theme_state.surface)
+                        border_color: hx(app.theme_state.border)
+
+                        GridLayout:
+                            cols: 1 if root.width < dp(980) else 4
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(12)
+
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(6)
+                                Label:
+                                    text: "Cancha"
+                                    color: hx(app.theme_state.text_secondary)
+                                    font_size: ds.FONT_LABEL
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.size
+                                    halign: "left"
+                                    valign: "middle"
+                                AppSpinner:
+                                    id: service_spinner
+                                    values: root.service_options
+                                    text: root.selected_service
+                                    on_text: root.on_service_selected(self.text)
+
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(6)
+                                Label:
+                                    text: "Hora inicio"
+                                    color: hx(app.theme_state.text_secondary)
+                                    font_size: ds.FONT_LABEL
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.size
+                                    halign: "left"
+                                    valign: "middle"
+                                AppSpinner:
+                                    id: start_time_spinner
+                                    values: root.start_time_options
+                                    text: root.selected_start_time if root.selected_start_time else root.start_time_options[0]
+                                    on_text: root.on_start_time_selected(self.text)
+
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(6)
+                                Label:
+                                    text: "Hora fin"
+                                    color: hx(app.theme_state.text_secondary)
+                                    font_size: ds.FONT_LABEL
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.size
+                                    halign: "left"
+                                    valign: "middle"
+                                AppSpinner:
+                                    id: end_time_spinner
+                                    values: root.end_time_options
+                                    text: root.selected_end_time if root.selected_end_time else (root.end_time_options[0] if root.end_time_options else "Sin disponibilidad")
+                                    on_text: root.on_end_time_selected(self.text)
+
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(6)
+                                Label:
+                                    text: "Aplicar selección"
+                                    color: hx(app.theme_state.text_secondary)
+                                    font_size: ds.FONT_LABEL
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.size
+                                    halign: "left"
+                                    valign: "middle"
+                                PrimaryButton:
+                                    text: "Usar en reserva"
+                                    on_release: root.apply_selection_to_reservation()
+
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(44)
+                            spacing: dp(12)
+                            SecondaryButton:
+                                size_hint_x: None
+                                width: dp(52)
+                                text: "<"
+                                on_release: root.go_previous_week()
+                            Label:
+                                text: root.week_label
+                                color: hx(app.theme_state.text_primary)
+                                font_size: "16sp"
+                                bold: True
+                                text_size: self.size
+                                halign: "center"
+                                valign: "middle"
+                            SecondaryButton:
+                                size_hint_x: None
+                                width: dp(52)
+                                text: ">"
+                                on_release: root.go_next_week()
+
+                        GridLayout:
+                            id: days_grid
+                            cols: 7
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(10)
+
+                    GridLayout:
+                        id: calendar_body
+                        cols: 2
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(18)
+
+                        CardBox:
+                            size_hint_y: None
+                            height: self.minimum_height
+                            padding: dp(20)
+                            spacing: dp(10)
+                            background_color: hx(app.theme_state.surface)
+                            border_color: hx(app.theme_state.border)
+
+                            Label:
+                                text: "Disponibilidad del partido"
+                                color: hx(app.theme_state.text_primary)
+                                font_size: "20sp"
+                                bold: True
+                                size_hint_y: None
+                                height: dp(24)
+                                text_size: self.width, dp(24)
+                                halign: "left"
+                                valign: "middle"
+
+                            Label:
+                                text: root.availability_text
+                                color: hx(app.theme_state.text_muted)
+                                font_size: ds.FONT_LABEL
+                                size_hint_y: None
+                                height: dp(18)
+                                text_size: self.width, dp(18)
+                                halign: "left"
+                                valign: "middle"
+
+                            Label:
+                                text: root.selected_range_text
+                                color: hx(app.theme_state.primary)
+                                font_size: ds.FONT_LABEL
+                                bold: True
+                                size_hint_y: None
+                                height: dp(18)
+                                text_size: self.width, dp(18)
+                                halign: "left"
+                                valign: "middle"
+
+                            Label:
+                                text: root.empty_state_text
+                                color: hx(app.theme_state.danger)
+                                font_size: ds.FONT_LABEL
+                                size_hint_y: None
+                                height: dp(18) if root.empty_state_text else 0
+                                opacity: 1 if root.empty_state_text else 0
+                                text_size: self.width, dp(18)
+                                halign: "left"
+                                valign: "middle"
+
+                            GridLayout:
+                                id: slots_grid
+                                cols: 4 if root.width < dp(1480) else 5
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(10)
+
+                        CardBox:
+                            size_hint_y: None
+                            height: self.minimum_height
+                            padding: dp(20)
+                            spacing: dp(10)
+                            background_color: hx(app.theme_state.surface)
+                            border_color: hx(app.theme_state.border)
+
+                            Label:
+                                text: "Bloques ocupados por cancha"
+                                color: hx(app.theme_state.text_primary)
+                                font_size: "20sp"
+                                bold: True
+                                size_hint_y: None
+                                height: dp(24)
+                                text_size: self.width, dp(24)
+                                halign: "left"
+                                valign: "middle"
+
+                            Label:
+                                text: root.legend_text
+                                color: hx(app.theme_state.text_muted)
+                                font_size: ds.FONT_LABEL
+                                size_hint_y: None
+                                height: dp(18)
+                                text_size: self.width, dp(18)
+                                halign: "left"
+                                valign: "middle"
+
+                            Label:
+                                text: root.occupied_ranges_text
+                                color: hx(app.theme_state.text_secondary)
+                                font_size: ds.FONT_BODY
+                                size_hint_y: None
+                                height: self.texture_size[1]
+                                text_size: self.width, None
+                                halign: "left"
+                                valign: "top"

@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: latiburona-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: latiburona-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: LATIBURONA_SECRET_KEY
+        sync: false
+      - key: LATIBURONA_ADMIN_PASSWORD
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.11
+
+databases:
+  - name: latiburona-db
+    databaseName: latiburona
+    user: latiburona

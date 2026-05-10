@@ -1,0 +1,289 @@
+#:import dp kivy.metrics.dp
+#:import sp kivy.metrics.sp
+#:import hx kivy.utils.get_color_from_hex
+
+<RegisterScreen>:
+    name: "register"
+    FloatLayout:
+        canvas.before:
+            Color:
+                rgba: hx(app.theme_state.bg)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+            Color:
+                rgba: hx(app.theme_state.accent)[:3] + [0.20 if app.theme_mode == "light" else 0.28]
+            Ellipse:
+                pos: root.width * -0.14, root.height * 0.58
+                size: root.width * 0.70, root.width * 0.70
+            Color:
+                rgba: hx(app.theme_state.primary_soft)[:3] + [0.14 if app.theme_mode == "light" else 0.18]
+            Ellipse:
+                pos: root.width * 0.52, root.height * 0.30
+                size: root.width * 0.64, root.width * 0.64
+            Color:
+                rgba: hx(app.theme_state.warning)[:3] + [0.12 if app.theme_mode == "light" else 0.16]
+            Ellipse:
+                pos: root.width * 0.14, root.height * -0.08
+                size: root.width * 0.60, root.width * 0.60
+
+        ScrollView:
+            do_scroll_x: False
+            bar_width: dp(6)
+
+            GridLayout:
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                padding: dp(18), dp(22)
+                spacing: dp(16)
+
+                AnchorLayout:
+                    size_hint_y: None
+                    height: register_card.height
+                    BoxLayout:
+                        id: register_card
+                        size_hint: None, None
+                        width: dp(720) if root.width >= dp(800) else root.width - dp(28)
+                        height: self.minimum_height
+                        orientation: "vertical"
+                        padding: dp(24), dp(24), dp(24), dp(22)
+                        spacing: dp(14)
+
+                        canvas.before:
+                            Color:
+                                rgba: hx(app.theme_state.shadow)[:3] + [0.22 if app.theme_mode == "light" else 0.34]
+                            RoundedRectangle:
+                                pos: self.x + dp(4), self.y - dp(10)
+                                size: self.size
+                                radius: [dp(30)]
+                            Color:
+                                rgba: hx(app.theme_state.card)[:3] + [0.82 if app.theme_mode == "light" else 0.13]
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(30)]
+                        canvas.after:
+                            Color:
+                                rgba: hx(app.theme_state.border)[:3] + [0.45 if app.theme_mode == "light" else 0.16]
+                            Line:
+                                rounded_rectangle: (self.x, self.y, self.width, self.height, dp(30))
+                                width: 1.05
+
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(42)
+                            spacing: dp(12)
+                            SecondaryButton:
+                                text: "Volver al login"
+                                size_hint_x: None
+                                width: dp(160)
+                                disabled: root.submitting
+                                on_release: root.go_login()
+                            Widget:
+
+                        Label:
+                            text: "Crear cuenta"
+                            color: hx(app.theme_state.text)
+                            font_size: sp(24)
+                            bold: True
+                            size_hint_y: None
+                            height: dp(34)
+                            text_size: self.size
+                            halign: "left"
+                            valign: "middle"
+
+                        Label:
+                            text: "Registra tu acceso para sincronizar reservas, reportes y operaciones desde cualquier dispositivo."
+                            color: hx(app.theme_state.secondary)[:3] + [0.92]
+                            font_size: sp(13)
+                            size_hint_y: None
+                            height: dp(40)
+                            text_size: self.width, None
+                            halign: "left"
+                            valign: "middle"
+
+                        GridLayout:
+                            cols: 2 if self.width >= dp(620) else 1
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(14)
+
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(8)
+                                Label:
+                                    text: "Nombre completo"
+                                    color: hx(app.theme_state.secondary)
+                                    font_size: sp(12)
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.size
+                                    halign: "left"
+                                    valign: "middle"
+                                AppTextInput:
+                                    id: full_name_input
+                                    hint_text: "Miguel Cuello"
+                                    size_hint_y: None
+                                    height: dp(52)
+
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(8)
+                                Label:
+                                    text: "Como quieres que te llamemos?"
+                                    color: hx(app.theme_state.secondary)
+                                    font_size: sp(12)
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.size
+                                    halign: "left"
+                                    valign: "middle"
+                                AppTextInput:
+                                    id: display_name_input
+                                    hint_text: "Miguel"
+                                    size_hint_y: None
+                                    height: dp(52)
+
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(8)
+                                Label:
+                                    text: "Correo electronico"
+                                    color: hx(app.theme_state.secondary)
+                                    font_size: sp(12)
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.size
+                                    halign: "left"
+                                    valign: "middle"
+                                AppTextInput:
+                                    id: email_input
+                                    hint_text: "correo@ejemplo.com"
+                                    size_hint_y: None
+                                    height: dp(52)
+
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(8)
+                                Label:
+                                    text: "Confirmar correo electronico"
+                                    color: hx(app.theme_state.secondary)
+                                    font_size: sp(12)
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.size
+                                    halign: "left"
+                                    valign: "middle"
+                                AppTextInput:
+                                    id: confirm_email_input
+                                    hint_text: "Repite tu correo"
+                                    size_hint_y: None
+                                    height: dp(52)
+
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(8)
+                                Label:
+                                    text: "Numero celular"
+                                    color: hx(app.theme_state.secondary)
+                                    font_size: sp(12)
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.size
+                                    halign: "left"
+                                    valign: "middle"
+                                AppTextInput:
+                                    id: phone_input
+                                    hint_text: "3001234567"
+                                    size_hint_y: None
+                                    height: dp(52)
+
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(8)
+                                Label:
+                                    text: "Contrasena"
+                                    color: hx(app.theme_state.secondary)
+                                    font_size: sp(12)
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.size
+                                    halign: "left"
+                                    valign: "middle"
+                                AppTextInput:
+                                    id: password_input
+                                    hint_text: "Minimo 6 caracteres"
+                                    password: True
+                                    size_hint_y: None
+                                    height: dp(52)
+
+                            BoxLayout:
+                                orientation: "vertical"
+                                size_hint_y: None
+                                height: self.minimum_height
+                                spacing: dp(8)
+                                Label:
+                                    text: "Confirmar contrasena"
+                                    color: hx(app.theme_state.secondary)
+                                    font_size: sp(12)
+                                    size_hint_y: None
+                                    height: dp(18)
+                                    text_size: self.size
+                                    halign: "left"
+                                    valign: "middle"
+                                AppTextInput:
+                                    id: confirm_password_input
+                                    hint_text: "Repite tu contrasena"
+                                    password: True
+                                    size_hint_y: None
+                                    height: dp(52)
+
+                        Label:
+                            text: root.feedback_text
+                            color: hx(app.theme_state.danger) if root.feedback_tone == "danger" else hx(app.theme_state.warning) if root.feedback_tone == "warning" else hx(app.theme_state.success) if root.feedback_tone == "success" else hx(app.theme_state.accent)
+                            opacity: 1 if root.feedback_text else 0
+                            font_size: sp(12)
+                            size_hint_y: None
+                            height: dp(36) if root.feedback_text else 0
+                            text_size: self.width, None
+                            halign: "left"
+                            valign: "middle"
+
+                        GridLayout:
+                            cols: 2 if self.width >= dp(420) else 1
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(12)
+
+                            PrimaryButton:
+                                id: register_button
+                                text: "Crear cuenta"
+                                busy_text: "Creando cuenta..."
+                                size_hint_y: None
+                                height: dp(50)
+                                disabled: root.submitting
+                                on_release: root.submit_registration()
+
+                            SecondaryButton:
+                                text: "Volver al login"
+                                size_hint_y: None
+                                height: dp(50)
+                                disabled: root.submitting
+                                on_release: root.go_login()
+
+                        Widget:
+                            size_hint_y: None
+                            height: dp(6)

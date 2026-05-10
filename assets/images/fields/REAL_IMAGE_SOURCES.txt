@@ -1,0 +1,8 @@
+Real image source manifest for LaTiburona UI assets
+
+hero_stadium.png | Pexels - Siarhei Nester - nighttime stadium floodlights | https://www.pexels.com/photo/sprinklers-watering-soccer-stadium-field-at-night-33471345/
+la_jaula.png | Unsplash - Jose G. Ortega Castro - soccer field at night with green lights | https://unsplash.com/photos/a-soccer-field-at-night-with-green-lights-9ifBseP9848
+brazuca_soccer.png | Pexels - Jose Parra - aerial illuminated soccer field | https://www.pexels.com/photo/aerial-night-view-of-illuminated-soccer-field-32761357/
+brasileirao.png | Pexels - Cesar O'neill - soccer on artificial turf at night | https://www.pexels.com/photo/young-man-playing-soccer-on-artificial-turf-at-night-32836895/
+la_castellana.png | Pexels - Stephen Leonardi - soccer player on turf at night | https://www.pexels.com/photo/young-soccer-player-on-turf-at-night-36843673/
+soccer_house.png | Pexels - Md Jawadur Rahman - indoor football on artificial turf | https://www.pexels.com/photo/men-playing-indoor-football-15818646/

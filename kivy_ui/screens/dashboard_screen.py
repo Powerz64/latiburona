@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.utils.formatters import format_currency
 from kivy_ui.screens.base_screen import BaseScreen
+from kivy_ui.theme import FIELD_IMAGES
 
 
 DASHBOARD_FIELDS = (
@@ -11,6 +12,79 @@ DASHBOARD_FIELDS = (
     "La Castellana",
     "Soccer House",
 )
+
+COURT_LIVE_META = {
+    "La Jaula Barranquilla": {
+        "address": "Via 40 # 85-470",
+        "location": "Riomar, Barranquilla",
+        "reference": "Cerca de Viva Barranquilla",
+        "access": "Acceso rápido desde Circunvalar",
+        "court_type": "Futbol 5 premium",
+        "promotion": "Promo madrugadores | 6AM-9AM -> 20% de descuento",
+        "schedule": "Prime: 6AM-9AM | Luces nocturnas listas",
+        "image_source": FIELD_IMAGES["la_jaula"],
+        "badge": "Alta demanda",
+        "status": "Lista",
+        "tone": "success",
+        "modifier": 0.18,
+    },
+    "Brazuca Soccer": {
+        "address": "Calle 3 # 23-90",
+        "location": "Villa Campestre",
+        "reference": "Ruta universitaria y acceso norte",
+        "access": "Parqueo junto a entrada principal",
+        "court_type": "Sintética 7v7",
+        "promotion": "Liga universitaria | 5+ jugadores -> bebidas gratis",
+        "schedule": "Bloques posjornada con alta rotación",
+        "image_source": FIELD_IMAGES["brazuca"],
+        "badge": "Disponible",
+        "status": "Cupos activos",
+        "tone": "primary",
+        "modifier": 0.04,
+    },
+    "Brasileirao": {
+        "address": "Carrera 46 # 76-109",
+        "location": "Norte Centro Historico",
+        "reference": "A 8 minutos del Romelio Martínez",
+        "access": "Entrada principal sobre Carrera 46",
+        "court_type": "Futbol 5 grama tech",
+        "promotion": "Noche Prime | Despues de 8PM -> balon incluido",
+        "schedule": "Cancha top nocturna | 8PM-10PM",
+        "image_source": FIELD_IMAGES["brasileirao"],
+        "badge": "Modo nocturno",
+        "status": "Top noche",
+        "tone": "success",
+        "modifier": 0.11,
+    },
+    "La Castellana": {
+        "address": "Carrera 53 # 94-160",
+        "location": "La Castellana",
+        "reference": "Cerca de Buenavista y Viva",
+        "access": "Entrada familiar con parqueo fácil",
+        "court_type": "Cancha familiar",
+        "promotion": "Fin de semana familiar | Niños entran gratis los domingos",
+        "schedule": "Cupos familiares protegidos en fin de semana",
+        "image_source": FIELD_IMAGES["castellana"],
+        "badge": "Top noche",
+        "status": "Lista",
+        "tone": "primary",
+        "modifier": -0.03,
+    },
+    "Soccer House": {
+        "address": "Calle 25 # 3-126",
+        "location": "Suroriente",
+        "reference": "Ruta rápida desde Murillo",
+        "access": "Descenso rápido junto a la entrada",
+        "court_type": "Cancha comunitaria",
+        "promotion": "Reto de martes | 2 horas por precio de 1.5",
+        "schedule": "Desafio destacado: martes",
+        "image_source": FIELD_IMAGES["soccer_house"],
+        "badge": "Promo activa",
+        "status": "Disponible",
+        "tone": "success",
+        "modifier": -0.12,
+    },
+}
 
 
 class DashboardScreen(BaseScreen):
@@ -30,12 +104,13 @@ class DashboardScreen(BaseScreen):
         insights = list(payload.get("insights") or [])
         recommendations = list(payload.get("recommendations") or [])
         live_rows = self._build_live_occupancy_rows(occupancy, reservations_by_hour, reservations, peak_hour)
+        live_courts = self._build_live_court_cards(occupancy, reservations, peak_hour)
 
         self.ids.revenue_card.set_data(
             {
                 "title": "💰 Ingresos cancha",
                 "value": format_currency(revenue),
-                "status": "Matchday",
+                "status": "Jornada",
                 "tone": "success" if revenue > 0 else "primary",
                 "caption": "Caja viva de reservas y partidos.",
             }
@@ -82,15 +157,17 @@ class DashboardScreen(BaseScreen):
         self.ids.live_occupancy_card.set_data(
             {
                 "title": "Ocupacion live de canchas",
-                "subtitle": "Lectura estilo EasyCancha: demanda, slots y ritmo por sede.",
+                "subtitle": "Lectura operativa: demanda, cupos y ritmo por sede.",
                 "rows": live_rows,
             }
         )
+        self._apply_live_court_cards(live_courts)
+        self._apply_mini_widgets(reservations, occupancy, peak_hour, live_courts)
         self.ids.insights_card.apply_data(
             "Lectura deportiva",
             "\n".join(f"- {item}" for item in insights[:3]) or "- Sin insights disponibles.",
             eyebrow="Analitica de cancha",
-            badge="Scout",
+            badge="Lectura",
             icon="⚽",
             tone="primary",
         )
@@ -103,7 +180,7 @@ class DashboardScreen(BaseScreen):
             tone="success" if reservations else "warning",
             highlighted=True,
         )
-        self.set_status("Dashboard deportivo actualizado con datos en tiempo real.")
+        self.set_status("Tablero deportivo actualizado con datos en tiempo real.")
 
     def apply_error(self, error: Exception) -> None:
         self.ids.revenue_card.set_error("No fue posible leer ingresos.")
@@ -112,9 +189,136 @@ class DashboardScreen(BaseScreen):
         self.ids.peak_hour_card.set_error("No fue posible detectar la hora pico.")
         self.ids.demand_card.set_error("No fue posible construir la demanda por hora.")
         self.ids.live_occupancy_card.set_error("No fue posible leer ocupacion live.")
+        for index in range(1, 6):
+            card_id = f"field_card_{index}"
+            if card_id in self.ids:
+                self.ids[card_id].set_error("Sin lectura live")
+        for card_id in (
+            "mini_peak_card",
+            "mini_today_card",
+            "mini_night_card",
+            "mini_tournament_card",
+            "mini_average_card",
+            "mini_featured_card",
+        ):
+            if card_id in self.ids:
+                self.ids[card_id].set_error("Sin datos")
         self.ids.insights_card.set_error("No fue posible generar insights.")
         self.ids.recommendations_card.set_error("No fue posible generar recomendaciones.")
         self.set_status(f"Error al cargar dashboard: {error}")
+
+    def _build_live_court_cards(self, occupancy: float, reservation_count: int, peak_hour: str) -> list[dict]:
+        base_ratio = max(0.0, min(float(occupancy or 0) / 100, 1.0))
+        if reservation_count <= 0:
+            base_ratio = 0.28
+        peak_label = peak_hour if peak_hour and peak_hour != "Sin datos" else "Sin pico aun"
+        cards = []
+        for field_name in DASHBOARD_FIELDS:
+            meta = COURT_LIVE_META[field_name]
+            ratio = max(0.12, min(base_ratio + float(meta["modifier"]), 0.98))
+            free_slots = max(0, round((1 - ratio) * 10))
+            if ratio >= 0.9:
+                badge = "Completa"
+                tone = "danger"
+            elif ratio >= 0.75:
+                badge = str(meta["badge"])
+                tone = str(meta["tone"])
+            elif ratio >= 0.45:
+                badge = str(meta["status"])
+                tone = str(meta["tone"])
+            else:
+                badge = "Disponible"
+                tone = "primary"
+            cards.append(
+                {
+                    "field_name": field_name,
+                    "address": meta["address"],
+                    "location": meta["location"],
+                    "availability": badge,
+                    "live_status": "EN VIVO",
+                    "occupancy": f"{round(ratio * 100)}% ocupación",
+                    "slots": f"{free_slots} cupos disponibles | Hora pico {peak_label}",
+                    "court_type": meta["court_type"],
+                    "reference": meta["reference"],
+                    "access": meta["access"],
+                    "promotion": meta["promotion"],
+                    "schedule": meta["schedule"],
+                    "occupancy_ratio": ratio,
+                    "image_source": meta["image_source"],
+                    "tone": tone,
+                }
+            )
+        return cards
+
+    def _apply_live_court_cards(self, cards: list[dict]) -> None:
+        for index, card_data in enumerate(cards, start=1):
+            card_id = f"field_card_{index}"
+            if card_id in self.ids:
+                self.ids[card_id].set_data(card_data)
+
+    def _apply_mini_widgets(
+        self,
+        reservations: int,
+        occupancy: float,
+        peak_hour: str,
+        live_courts: list[dict],
+    ) -> None:
+        top_court = max(live_courts, key=lambda item: item.get("occupancy_ratio", 0), default={})
+        featured = live_courts[0] if live_courts else {}
+        self.ids.mini_peak_card.set_data(
+            {
+                "title": "Hora pico",
+                "value": peak_hour if peak_hour != "Sin datos" else "--",
+                "status": "Demanda en vivo",
+                "tone": "primary",
+                "caption": "Franja mas activa del dia.",
+            }
+        )
+        self.ids.mini_today_card.set_data(
+            {
+                "title": "Reservas de hoy",
+                "value": str(reservations),
+                "status": "Agenda",
+                "tone": "success" if reservations else "warning",
+                "caption": "Partidos registrados en operacion.",
+            }
+        )
+        self.ids.mini_night_card.set_data(
+            {
+                "title": "Cancha top noche",
+                "value": top_court.get("field_name", "--").replace(" Barranquilla", ""),
+                "status": top_court.get("availability", "Noche"),
+                "tone": top_court.get("tone", "primary"),
+                "caption": top_court.get("schedule", "Cupos nocturnos listos."),
+            }
+        )
+        self.ids.mini_tournament_card.set_data(
+            {
+                "title": "Próximo torneo",
+                "value": "Liga 7v7",
+                "status": "Siguiente bloque",
+                "tone": "primary",
+                "caption": "Ventana sugerida para calendario.",
+            }
+        )
+        self.ids.mini_average_card.set_data(
+            {
+                "title": "Ocupación promedio",
+                "value": f"{occupancy:.1f}%",
+                "status": "Red de canchas",
+                "tone": "success" if occupancy >= 65 else "warning",
+                "caption": "Promedio operativo de sedes.",
+            }
+        )
+        self.ids.mini_featured_card.set_data(
+            {
+                "title": "Partido destacado",
+                "value": featured.get("field_name", "--").replace(" Barranquilla", ""),
+                "status": "Cupo prime",
+                "tone": featured.get("tone", "success"),
+                "caption": featured.get("promotion", "Promoción destacada."),
+            }
+        )
 
     def _build_live_occupancy_rows(
         self,
@@ -148,7 +352,7 @@ class DashboardScreen(BaseScreen):
                 {
                     "field_name": field_name,
                     "status_text": f"{round(ratio * 100)}% {status_text}",
-                    "slot_text": f"{free_slots} slots libres | Pico {peak_label}",
+                    "slot_text": f"{free_slots} cupos libres | Hora pico {peak_label}",
                     "occupancy_ratio": ratio,
                     "tone": tone,
                 }
@@ -188,9 +392,23 @@ class DashboardScreen(BaseScreen):
         self.ids.live_occupancy_card.set_loading(
             {
                 "title": "Ocupacion live de canchas",
-                "subtitle": "Sincronizando ritmo de sedes y slots disponibles...",
+                "subtitle": "Sincronizando ritmo de sedes y cupos disponibles...",
             }
         )
+        for index in range(1, 6):
+            card_id = f"field_card_{index}"
+            if card_id in self.ids:
+                self.ids[card_id].set_loading()
+        for card_id in (
+            "mini_peak_card",
+            "mini_today_card",
+            "mini_night_card",
+            "mini_tournament_card",
+            "mini_average_card",
+            "mini_featured_card",
+        ):
+            if card_id in self.ids:
+                self.ids[card_id].set_loading({"title": "Widget operativo", "caption": "Sincronizando operacion..."})
         self.ids.insights_card.set_loading(
             {
                 "title": "Lectura deportiva",

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from kivy.app import App
 from kivy.metrics import dp
-from kivy.properties import StringProperty
+from kivy.properties import BooleanProperty, StringProperty
 
-from app.utils.constants import DEFAULT_SETTINGS, LOCATION_INFO
+from app.utils.constants import DEFAULT_SETTINGS
 from app.utils.formatters import format_currency
 from app.utils.validators import ValidationError
 from kivy_ui.screens.base_screen import ServiceScreen
@@ -21,6 +21,7 @@ class SettingsScreen(ServiceScreen):
     account_role_text = StringProperty("")
     dark_button_variant = StringProperty("primary")
     light_button_variant = StringProperty("secondary")
+    show_pricing_controls = BooleanProperty(True)
 
     def on_kv_post(self, *_args) -> None:
         self.bind(size=self._update_layout)
@@ -29,7 +30,7 @@ class SettingsScreen(ServiceScreen):
     def _update_layout(self, *_args) -> None:
         if not self.ids:
             return
-        self.ids.content_grid.orientation = "vertical" if self.width < dp(1200) else "horizontal"
+        self.ids.content_grid.orientation = "vertical" if self.width < dp(1200) or not self.show_pricing_controls else "horizontal"
 
     def refresh(self) -> None:
         self.set_status("Cargando configuración...")
@@ -69,9 +70,9 @@ class SettingsScreen(ServiceScreen):
             settings.bulk_discount,
         )
         self.location_text = (
-            f"Dirección: {LOCATION_INFO['direccion']}\n\n"
-            f"Cómo llegar: {LOCATION_INFO['como_llegar']}\n\n"
-            f"Puntos de referencia: {LOCATION_INFO['puntos_referencia']}"
+            "Cobertura local: Riomar, Villa Campestre, Norte Centro Historico, "
+            "La Castellana y Suroriente. Cada sede muestra accesos, referencias y "
+            "promociones útiles para operar con contexto de Barranquilla."
         )
         self.rules_text = (
             f"Se aceptan niños: {'Sí' if settings.allow_children else 'No'}\n"
@@ -81,9 +82,16 @@ class SettingsScreen(ServiceScreen):
         )
 
         user = payload["user"]
+        role = str(user.get("role") or "").strip().lower()
+        self.show_pricing_controls = role == "admin" or bool(user.get("is_admin"))
+        if not self.show_pricing_controls:
+            self.rules_text = (
+                f"Se aceptan niños: {'Sí' if settings.allow_children else 'No'}\n"
+                f"Se aceptan mascotas: {'Si' if settings.allow_pets else 'No'}"
+            )
         self.account_name_text = user.get("display_name") or user.get("full_name") or "Sin sesión activa"
         self.account_email_text = user.get("email", "")
-        self.account_role_text = "Administrador" if user.get("is_admin") else "Usuario de negocio"
+        self.account_role_text = "Administrador" if self.show_pricing_controls else "Operador"
         self._apply_theme_state(App.get_running_app().theme_mode)
         self.set_status("Configuración del negocio y experiencia visual cargadas.")
 
@@ -119,14 +127,57 @@ class SettingsScreen(ServiceScreen):
         bulk_threshold: int,
         bulk_discount: float,
     ) -> str:
+        tarifas = (
+            f"Mañana: {format_currency(morning)} | "
+            f"Tarde: {format_currency(afternoon)} | "
+            f"Noche Prime: {format_currency(night)}"
+        )
         return (
-            "Información del negocio\n"
-            f"- Mañana: {format_currency(morning)}\n"
-            f"- Tarde: {format_currency(afternoon)}\n"
-            f"- Noche: {format_currency(night)}\n\n"
-            "Promociones activas\n"
-            f"- Recargo fin de semana: {weekend_surcharge:.0f}%\n"
-            f"- Descuento por grupo ({bulk_threshold}+): {bulk_discount:.0f}%"
+            "La Jaula Barranquilla\n"
+            "Ubicación: Vía 40 #85-470, Riomar.\n"
+            "Cómo llegar: acceso rápido desde Circunvalar y Vía 40; entrada principal junto al corredor universitario.\n"
+            "Referencias: cerca de Viva Barranquilla y a pocos minutos del Romelio Martínez.\n"
+            "Parqueadero: privado disponible con ingreso controlado.\n"
+            "Horas más activas: 7PM-10PM | Recomendado: 6AM-9AM para madrugadores.\n"
+            f"Tarifas: {tarifas}.\n"
+            f"Promociones: 20% de descuento para madrugadores; descuento grupos {bulk_threshold}+ (-{bulk_discount:.0f}%); balón gratis en horario nocturno.\n"
+            "Característica: cancha premium de alta rotación para partidos competitivos.\n\n"
+            "Brazuca Soccer\n"
+            "Ubicación: Calle 3 #23-90, Villa Campestre.\n"
+            "Cómo llegar: ruta directa desde corredor universitario y acceso norte.\n"
+            "Referencias: cerca de universidades, conjuntos residenciales y vía a Puerto Colombia.\n"
+            "Parqueadero: bahías laterales y zona de descenso rápido.\n"
+            "Horas más activas: 5PM-8PM | Recomendado: 4PM-6PM para ligas universitarias.\n"
+            f"Tarifas: {tarifas}.\n"
+            "Promociones: Liga universitaria con bebidas gratis para 5+ jugadores; bloque posjornada con prioridad.\n"
+            "Característica: sintética 7v7 con ambiente joven y alto flujo entre semana.\n\n"
+            "Brasileirao\n"
+            "Ubicación: Carrera 46 #76-109, Norte Centro Histórico.\n"
+            "Cómo llegar: entrada principal sobre Carrera 46 con conexión rápida hacia Prado y Alto Prado.\n"
+            "Referencias: a 8 minutos del Romelio Martínez y cerca de corredores de rumba nocturna.\n"
+            "Parqueadero: cupos frontales y vigilancia de acceso.\n"
+            "Horas más activas: 8PM-11PM | Recomendado: después de 8PM para Noche Prime.\n"
+            f"Tarifas: {tarifas}; recargo fin de semana {weekend_surcharge:.0f}%.\n"
+            "Promociones: balón incluido después de 8PM y prioridad para partidos prime.\n"
+            "Característica: grama tech y luces fuertes para partidos nocturnos.\n\n"
+            "La Castellana\n"
+            "Ubicación: Carrera 53 #94-160, La Castellana.\n"
+            "Cómo llegar: acceso por Carrera 53 con rutas rápidas desde Buenavista y Viva.\n"
+            "Referencias: zona familiar, restaurantes cercanos y parqueaderos de apoyo.\n"
+            "Parqueadero: fácil acceso para familias y visitantes.\n"
+            "Horas más activas: sábados 4PM-8PM | Recomendado: domingos familiares.\n"
+            f"Tarifas: {tarifas}.\n"
+            "Promociones: Fin de semana familiar; niños entran gratis los domingos.\n"
+            "Característica: cancha cómoda para planes familiares y partidos recreativos.\n\n"
+            "Soccer House\n"
+            "Ubicación: Calle 25 #3-126, Suroriente.\n"
+            "Cómo llegar: ruta rápida desde Murillo con descenso junto a la entrada.\n"
+            "Referencias: cerca de barrios residenciales y comercio local.\n"
+            "Parqueadero: zona de motos y carros con acceso rapido.\n"
+            "Horas más activas: 6PM-9PM | Recomendado: martes de reto y bloques comunitarios.\n"
+            f"Tarifas: {tarifas}.\n"
+            "Promociones: Reto de martes; 2 horas por precio de 1.5.\n"
+            "Característica: cancha comunitaria con alta recurrencia de equipos locales."
         )
 
     def save_settings(self) -> None:

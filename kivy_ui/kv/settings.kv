@@ -84,7 +84,7 @@
                                     halign: "left"
                                     valign: "middle"
                                 Label:
-                                    text: "Pricing, reglas del club, experiencia visual y cuenta activa."
+                                    text: "Tarifas, reglas del club, experiencia visual y cuenta activa." if root.show_pricing_controls else "Reglas del club, experiencia visual y cuenta activa."
                                     color: hx(app.theme_state.text_secondary)
                                     font_size: ds.FONT_BODY
                                     size_hint_y: None
@@ -95,7 +95,7 @@
                             InfoPill:
                                 size_hint_x: None
                                 width: dp(132)
-                                text: "Admin console"
+                                text: "Consola admin" if root.show_pricing_controls else "Consola operador"
                                 background_color: hx(app.theme_state.primary_soft)
                                 border_color: hx(app.theme_state.primary)
 
@@ -111,15 +111,18 @@
 
                     BoxLayout:
                         id: content_grid
-                        orientation: "vertical" if root.width < dp(1200) else "horizontal"
+                        orientation: "vertical" if root.width < dp(1200) or not root.show_pricing_controls else "horizontal"
                         size_hint_y: None
                         height: self.minimum_height
                         spacing: dp(18)
 
                         CardBox:
                             id: tariffs_card
+                            disabled: not root.show_pricing_controls
+                            opacity: 1 if root.show_pricing_controls else 0
+                            size_hint_x: 1 if root.show_pricing_controls or root.width < dp(1200) else 0
                             size_hint_y: None
-                            height: self.minimum_height
+                            height: self.minimum_height if root.show_pricing_controls else 0
                             pos_hint: {"top": 1}
                             padding: dp(20)
                             spacing: dp(16)
@@ -153,7 +156,7 @@
                                     orientation: "vertical"
                                     spacing: dp(2)
                                     Label:
-                                        text: "Pricing engine"
+                                        text: "Motor de tarifas"
                                         color: hx(app.theme_state.text_primary)
                                         font_size: "20sp"
                                         bold: True
@@ -271,7 +274,7 @@
                                     height: dp(88)
                                     spacing: dp(7)
                                     Label:
-                                        text: "Weekend uplift %"
+                                        text: "Recargo fin de semana %"
                                         color: hx(app.theme_state.text_secondary)
                                         font_size: ds.FONT_LABEL
                                         bold: True
@@ -528,11 +531,11 @@
                                     height: dp(50)
                                     spacing: dp(12)
                                     SoftButton:
-                                        text: "Dark"
+                                        text: "Oscuro"
                                         variant: root.dark_button_variant
                                         on_release: root.activate_dark_theme()
                                     SoftButton:
-                                        text: "Light"
+                                        text: "Claro"
                                         variant: root.light_button_variant
                                         on_release: root.activate_light_theme()
 

@@ -157,11 +157,17 @@ class ReservationsScreen(ServiceScreen):
                 reservation.people_count,
                 reservation.end_time,
             )
-            promotions = " | ".join(pricing.applied_labels) if pricing.applied_labels else "Sin promociones"
+            promotions = self._format_reservation_promotions(pricing)
             discount_text = (
-                f"Descuento aplicado: {pricing.bulk_discount_percent:.0f}%"
+                f"Group promo: -{pricing.bulk_discount_percent:.0f}%"
                 if pricing.bulk_discount_percent
-                else "Sin descuento aplicado"
+                else ""
+            )
+            promo_label = self._format_promo_label(pricing)
+            match_badge = self._match_badge_for(
+                reservation.status,
+                reservation.schedule,
+                reservation.people_count,
             )
             reservations_payload.append(
                 {
@@ -185,6 +191,8 @@ class ReservationsScreen(ServiceScreen):
                     "status_tone": "success" if reservation.status == "confirmada" else "warning",
                     "promotion_text": promotions,
                     "discount_text": discount_text,
+                    "promo_label_text": promo_label,
+                    "match_badge_text": match_badge,
                     "total_text": format_currency(reservation.total),
                     "is_confirmed": reservation.status == "confirmada",
                     "show_management_actions": can_manage_actions,
@@ -330,6 +338,30 @@ class ReservationsScreen(ServiceScreen):
     def _can_manage_reservations(self) -> bool:
         role = str((App.get_running_app().current_user or {}).get("role", "")).strip().lower()
         return role == "admin"
+
+    def _format_reservation_promotions(self, pricing) -> str:
+        labels = []
+        if pricing.weekend_surcharge_percent:
+            labels.append(f"Recargo fin de semana +{pricing.weekend_surcharge_percent:.0f}%")
+        if pricing.bulk_discount_percent:
+            labels.append(f"Promo por grupo -{pricing.bulk_discount_percent:.0f}%")
+        return " | ".join(labels) if labels else "Sin promociones activas"
+
+    def _format_promo_label(self, pricing) -> str:
+        if pricing.bulk_discount_percent:
+            return f"Promo activa: grupo grande (-{pricing.bulk_discount_percent:.0f}%)"
+        if pricing.weekend_surcharge_percent:
+            return f"Partido prime de fin de semana (+{pricing.weekend_surcharge_percent:.0f}%)"
+        return "Partido operativo: tarifa estandar"
+
+    def _match_badge_for(self, status: str, schedule: str, people_count: int) -> str:
+        if int(people_count or 0) >= 8:
+            return "Partido destacado"
+        if str(schedule or "").strip().lower() == "noche":
+            return "Partido prime"
+        if str(status or "").strip().lower() == "confirmada":
+            return "Partido premium"
+        return "Partido en vivo"
 
     def _set_save_feedback(self, message: str, tone: str = "neutral") -> None:
         self.save_feedback_text = message

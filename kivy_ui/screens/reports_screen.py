@@ -120,7 +120,7 @@ class ReportsScreen(ServiceScreen):
             {
                 "title": "Ocupacion",
                 "value": f"{float(metrics.get('occupancy_rate', 0) or 0):.1f}%",
-                "status": "Live",
+                "status": "En vivo",
                 "tone": "success" if float(metrics.get("occupancy_rate", 0) or 0) >= 70 else "warning",
                 "caption": "Uso operativo de franjas disponibles.",
             }
@@ -142,7 +142,7 @@ class ReportsScreen(ServiceScreen):
         self.ids.reports_insights_card.apply_data(
             "Lectura de cancha",
             self.insights_text,
-            eyebrow="Scout operativo",
+            eyebrow="Lectura operativa",
             badge="Analitica",
             icon="⚽",
             tone="primary",

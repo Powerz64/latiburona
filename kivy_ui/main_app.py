@@ -78,11 +78,11 @@ class ShellScreen(Screen):
     offline_banner_text = StringProperty("Sin conexión. Mostrando datos guardados.")
     current_user_text = StringProperty("Sin sesión")
     current_mode_text = StringProperty("Modo oscuro")
-    page_title = StringProperty("Dashboard")
+    page_title = StringProperty("Tablero")
     page_subtitle = StringProperty("Centro deportivo de reservas, canchas y torneos.")
 
     page_descriptions = {
-        "dashboard": ("⚽ Dashboard", "Pulso comercial, canchas destacadas y demanda nocturna."),
+        "dashboard": ("⚽ Tablero", "Pulso comercial, canchas destacadas y demanda nocturna."),
         "reservations": ("📅 Reservas", "Partidos, horarios, disponibilidad y control operativo."),
         "calendar": ("🏟 Calendario", "Disponibilidad por cancha, franja y jornada deportiva."),
         "reports": ("📊 Reportes", "Lecturas ejecutivas para ocupacion, ingresos y reservas."),
@@ -201,8 +201,10 @@ class ShellScreen(Screen):
     def _set_page_copy(self, screen_name: str) -> None:
         self.page_title, self.page_subtitle = self.page_descriptions.get(
             screen_name,
-            ("⚽ Dashboard", "Centro deportivo de LaTiburona."),
+            ("⚽ Tablero", "Centro deportivo de LaTiburona."),
         )
+        if screen_name == "settings" and self._current_role() != "admin":
+            self.page_subtitle = "Reglas de ingreso, tema y cuenta activa."
 
     def _set_nav_state(self, screen_name: str) -> None:
         if "nav_list" not in self.ids:

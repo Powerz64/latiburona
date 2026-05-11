@@ -14,7 +14,7 @@ SIDEBAR_ITEMS = (
     {
         "screen_name": "dashboard",
         "icon_text": "⚽",
-        "title_text": "Dashboard",
+        "title_text": "Tablero",
         "caption_text": "Pulso del club",
         "roles": ("admin", "operator"),
     },

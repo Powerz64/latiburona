@@ -18,6 +18,8 @@ class ReservationRow(CardBox):
     status_tone = StringProperty("warning")
     promotion_text = StringProperty("")
     discount_text = StringProperty("")
+    promo_label_text = StringProperty("")
+    match_badge_text = StringProperty("Partido prime")
     total_text = StringProperty("")
     is_confirmed = BooleanProperty(False)
     on_edit = ObjectProperty(None, allownone=True)

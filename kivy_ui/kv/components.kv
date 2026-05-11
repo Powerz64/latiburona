@@ -390,7 +390,7 @@
                 height: dp(30)
                 spacing: dp(8)
                 InfoPill:
-                    text: "Live"
+                    text: "En vivo"
                     size_hint_x: None
                     width: dp(74)
                     background_color: hx(app.theme_state.success_soft)
@@ -402,7 +402,7 @@
                     background_color: hx(app.theme_state.primary_soft)
                     border_color: hx(app.theme_state.primary)
                 InfoPill:
-                    text: "LED night"
+                    text: "Luces noche"
                     size_hint_x: None
                     width: dp(112)
                     background_color: hx(app.theme_state.surface_alt)
@@ -440,10 +440,10 @@
 
 <FieldCard>:
     size_hint_y: None
-    height: dp(304)
+    height: dp(374)
     padding: dp(0)
     spacing: dp(0)
-    radius: dp(24)
+    radius: dp(18)
     FloatLayout:
         BoxLayout:
             orientation: "vertical"
@@ -451,7 +451,7 @@
             pos: root.pos
             FloatLayout:
                 size_hint_y: None
-                height: dp(136)
+                height: dp(118)
                 Image:
                     source: root.image_source
                     allow_stretch: True
@@ -476,10 +476,10 @@
                     text: root.icon_text
                     font_name: ds.EMOJI_FONT
                     color: hx(app.theme_state.text_primary)
-                    font_size: "24sp"
+                    font_size: "22sp"
                     size_hint: None, None
-                    size: dp(44), dp(44)
-                    pos: self.parent.x + dp(14), self.parent.top - dp(56)
+                    size: dp(40), dp(40)
+                    pos: self.parent.x + dp(12), self.parent.top - dp(50)
                     text_size: self.size
                     halign: "center"
                     valign: "middle"
@@ -489,15 +489,15 @@
                         RoundedRectangle:
                             pos: self.pos
                             size: self.size
-                            radius: [dp(16)]
+                            radius: [dp(14)]
                 Label:
                     text: root.availability_text
                     color: root.badge_text_color
                     font_size: "11sp"
                     bold: True
                     size_hint: None, None
-                    size: min(self.texture_size[0] + dp(22), dp(132)), dp(30)
-                    pos: self.parent.right - self.width - dp(14), self.parent.top - dp(48)
+                    size: min(self.texture_size[0] + dp(22), dp(154)), dp(28)
+                    pos: self.parent.right - self.width - dp(12), self.parent.top - dp(44)
                     text_size: self.width - dp(14), self.height
                     halign: "center"
                     valign: "middle"
@@ -518,24 +518,13 @@
                             radius: [dp(14)]
             BoxLayout:
                 orientation: "vertical"
-                padding: dp(16), dp(13)
-                spacing: dp(6)
+                padding: dp(14), dp(11)
+                spacing: dp(5)
                 Label:
                     text: root.field_name
                     color: hx(app.theme_state.text_primary)
-                    font_size: "16sp"
+                    font_size: "15sp"
                     bold: True
-                    size_hint_y: None
-                    height: dp(24)
-                    text_size: self.width, dp(24)
-                    halign: "left"
-                    valign: "middle"
-                    shorten: True
-                    shorten_from: "right"
-                Label:
-                    text: root.address_text
-                    color: hx(app.theme_state.text_secondary)
-                    font_size: ds.FONT_LABEL
                     size_hint_y: None
                     height: dp(20)
                     text_size: self.width, dp(20)
@@ -543,9 +532,20 @@
                     valign: "middle"
                     shorten: True
                     shorten_from: "right"
+                Label:
+                    text: root.location_text + " | " + root.address_text
+                    color: hx(app.theme_state.text_secondary)
+                    font_size: ds.FONT_LABEL
+                    size_hint_y: None
+                    height: dp(18)
+                    text_size: self.width, dp(18)
+                    halign: "left"
+                    valign: "middle"
+                    shorten: True
+                    shorten_from: "right"
                 BoxLayout:
                     size_hint_y: None
-                    height: dp(24)
+                    height: dp(20)
                     spacing: dp(8)
                     Label:
                         text: "📍"
@@ -558,7 +558,7 @@
                         halign: "left"
                         valign: "middle"
                     Label:
-                        text: root.location_text
+                        text: root.reference_text
                         color: hx(app.theme_state.text_muted)
                         font_size: ds.FONT_LABEL
                         text_size: self.size
@@ -571,12 +571,12 @@
                     height: dp(20)
                     spacing: dp(8)
                     Label:
-                        text: "Live"
+                        text: root.live_status_text
                         color: hx(app.theme_state.success)
                         font_size: "11sp"
                         bold: True
                         size_hint_x: None
-                        width: dp(38)
+                        width: dp(74)
                         text_size: self.size
                         halign: "left"
                         valign: "middle"
@@ -612,6 +612,67 @@
                     size_hint_y: None
                     height: dp(18)
                     text_size: self.width, dp(18)
+                    halign: "left"
+                    valign: "middle"
+                    shorten: True
+                    shorten_from: "right"
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(20)
+                    spacing: dp(8)
+                    Label:
+                        text: root.court_type_text
+                        color: hx(app.theme_state.text_secondary)
+                        font_size: "11sp"
+                        bold: True
+                        text_size: self.size
+                        halign: "left"
+                        valign: "middle"
+                        shorten: True
+                        shorten_from: "right"
+                    Label:
+                        text: root.access_text
+                        color: hx(app.theme_state.text_muted)
+                        font_size: "11sp"
+                        text_size: self.size
+                        halign: "right"
+                        valign: "middle"
+                        shorten: True
+                        shorten_from: "right"
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(38)
+                    padding: dp(10), dp(6)
+                    spacing: dp(8)
+                    canvas.before:
+                        Color:
+                            rgba: root.accent_color[0], root.accent_color[1], root.accent_color[2], 0.08 + root.hover_progress * 0.06
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(14)]
+                        Color:
+                            rgba: root.accent_color[0], root.accent_color[1], root.accent_color[2], 0.36
+                        Line:
+                            rounded_rectangle: self.x, self.y, self.width, self.height, dp(14)
+                            width: dp(1)
+                    Label:
+                        text: root.promotion_text
+                        color: hx(app.theme_state.text_primary)
+                        font_size: "11sp"
+                        bold: True
+                        text_size: self.size
+                        halign: "left"
+                        valign: "middle"
+                        shorten: True
+                        shorten_from: "right"
+                Label:
+                    text: root.schedule_text
+                    color: hx(app.theme_state.primary)
+                    font_size: "11sp"
+                    size_hint_y: None
+                    height: dp(16)
+                    text_size: self.width, dp(16)
                     halign: "left"
                     valign: "middle"
                     shorten: True
@@ -999,9 +1060,10 @@
 
 <ReservationRow>:
     size_hint_y: None
-    height: dp(246)
-    padding: dp(16)
-    spacing: dp(10)
+    orientation: "vertical"
+    height: dp(220)
+    padding: dp(14)
+    spacing: dp(9)
     background_color: hx(app.theme_state.card_alt)
     border_color: hx(app.theme_state.success) if root.status_tone == "success" else hx(app.theme_state.primary)
     shadow_offset: dp(2)
@@ -1014,23 +1076,23 @@
             radius: [dp(3)]
     BoxLayout:
         size_hint_y: None
-        height: dp(44)
+        height: dp(40)
         spacing: dp(12)
         BoxLayout:
             size_hint_x: None
-            width: dp(44)
+            width: dp(40)
             canvas.before:
                 Color:
                     rgba: hx(app.theme_state.success_soft) if root.status_tone == "success" else hx(app.theme_state.primary_soft)
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
-                    radius: [dp(16)]
+                    radius: [dp(14)]
             Label:
                 text: "⚽"
                 font_name: ds.EMOJI_FONT
                 color: hx(app.theme_state.success) if root.status_tone == "success" else hx(app.theme_state.primary)
-                font_size: "22sp"
+                font_size: "20sp"
                 text_size: self.size
                 halign: "center"
                 valign: "middle"
@@ -1041,10 +1103,10 @@
                 text: root.client_name
                 color: hx(app.theme_state.text)
                 bold: True
-                font_size: "17sp"
+                font_size: "15sp"
                 size_hint_y: None
-                height: dp(23)
-                text_size: self.width, dp(23)
+                height: dp(20)
+                text_size: self.width, dp(20)
                 halign: "left"
                 valign: "middle"
                 shorten: True
@@ -1054,8 +1116,8 @@
                 color: hx(app.theme_state.text_muted)
                 font_size: ds.FONT_LABEL
                 size_hint_y: None
-                height: dp(17)
-                text_size: self.width, dp(17)
+                height: dp(16)
+                text_size: self.width, dp(16)
                 halign: "left"
                 valign: "middle"
                 shorten: True
@@ -1064,15 +1126,15 @@
             text: root.total_text
             color: hx(app.theme_state.text)
             bold: True
-            font_size: "17sp"
+            font_size: "15sp"
             size_hint_x: None
-            width: dp(142)
+            width: dp(126)
             text_size: self.width, self.height
             halign: "right"
             valign: "middle"
     BoxLayout:
         size_hint_y: None
-        height: dp(58)
+        height: dp(50)
         spacing: dp(12)
         GridLayout:
             cols: 2
@@ -1120,7 +1182,7 @@
         Label:
             text: root.status_text
             size_hint_x: None
-            width: dp(112)
+            width: dp(118)
             color: hx(app.theme_state.success) if root.status_tone == "success" else hx(app.theme_state.warning) if root.status_tone == "warning" else hx(app.theme_state.danger)
             font_size: "11sp"
             bold: True
@@ -1147,11 +1209,11 @@
                 size: self.size
     BoxLayout:
         size_hint_y: None
-        height: dp(38)
-        spacing: dp(10)
+        height: dp(32)
+        spacing: dp(12)
         Label:
-            text: root.promotion_text + " | " + root.discount_text
-            color: hx(app.theme_state.muted)
+            text: root.promo_label_text if root.promo_label_text else root.promotion_text
+            color: hx(app.theme_state.text_secondary)
             font_size: "11sp"
             text_size: self.size
             halign: "left"
@@ -1160,15 +1222,26 @@
             shorten_from: "right"
         InfoPill:
             size_hint_x: None
-            width: dp(118)
-            text: "Match card"
-    FloatLayout:
+            width: dp(150)
+            text: root.match_badge_text
+            background_color: hx(app.theme_state.primary_soft)
+            border_color: hx(app.theme_state.primary)
+    BoxLayout:
         size_hint_y: None
-        height: dp(42)
+        height: dp(44)
+        padding: dp(6), dp(4)
+        spacing: dp(14)
+        canvas.before:
+            Color:
+                rgba: hx(app.theme_state.surface)
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [dp(14)]
         BoxLayout:
-            size_hint: 1, None
-            height: dp(42)
-            spacing: dp(10)
+            size_hint: 1, 1
+            size_hint_x: 1 if root.show_management_actions else 0
+            spacing: dp(14)
             opacity: 1 if root.show_management_actions else 0
             SecondaryButton:
                 text: "Editar"
@@ -1183,9 +1256,9 @@
                 disabled: not root.show_management_actions
                 on_release: app.get_screen("reservations").on_delete(root.data)
         BoxLayout:
-            size_hint: 1, None
-            height: dp(42)
-            spacing: dp(10)
+            size_hint: 1, 1
+            size_hint_x: 0 if root.show_management_actions else 1
+            spacing: dp(14)
             opacity: 0 if root.show_management_actions else 1
             SecondaryButton:
                 text: "Editar"

@@ -97,9 +97,14 @@ class DashboardScreen(BaseScreen):
 
     def apply_data(self, payload: dict) -> None:
         revenue = float(payload.get("total_revenue", 0) or 0)
+        revenue_today = float(payload.get("revenue_today", revenue) or 0)
+        revenue_week = float(payload.get("revenue_week", revenue) or 0)
         reservations = int(payload.get("total_reservations", 0) or 0)
+        confirmed_reservations = int(payload.get("confirmed_reservations", 0) or 0)
+        pending_reservations = int(payload.get("pending_reservations", 0) or 0)
         occupancy = float(payload.get("occupancy_rate", 0) or 0)
         peak_hour = str(payload.get("most_requested_hour") or "--")
+        top_court = str(payload.get("top_court") or "--")
         reservations_by_hour = dict(payload.get("reservations_by_hour") or {})
         insights = list(payload.get("insights") or [])
         recommendations = list(payload.get("recommendations") or [])
@@ -109,10 +114,10 @@ class DashboardScreen(BaseScreen):
         self.ids.revenue_card.set_data(
             {
                 "title": "💰 Ingresos cancha",
-                "value": format_currency(revenue),
-                "status": "Jornada",
-                "tone": "success" if revenue > 0 else "primary",
-                "caption": "Caja viva de reservas y partidos.",
+                "value": format_currency(revenue_today),
+                "status": "Hoy",
+                "tone": "success" if revenue_today > 0 else "primary",
+                "caption": f"Semana: {format_currency(revenue_week)} | Total: {format_currency(revenue)}",
             }
         )
         self.ids.total_reservations_card.set_data(
@@ -121,7 +126,7 @@ class DashboardScreen(BaseScreen):
                 "value": str(reservations),
                 "status": "Agenda",
                 "tone": "primary",
-                "caption": "Reservas registradas en todas las canchas.",
+                "caption": f"Confirmadas: {confirmed_reservations} | Pendientes: {pending_reservations}",
             }
         )
         self.ids.occupancy_card.set_data(
@@ -137,9 +142,9 @@ class DashboardScreen(BaseScreen):
             {
                 "title": "💡 Hora pico",
                 "value": peak_hour,
-                "status": "Luces altas",
+                "status": top_court,
                 "tone": "primary" if peak_hour != "Sin datos" else "warning",
-                "caption": "Franja con mayor demanda de jugadores.",
+                "caption": "Franja con mayor demanda y cancha lider.",
             }
         )
         self.ids.demand_card.set_data(

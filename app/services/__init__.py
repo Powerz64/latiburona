@@ -1,5 +1,6 @@
 from .api_client import ApiClient
 from .api_exceptions import ReservationConflictValidationError
+from .analytics_api_service import AnalyticsApiService
 from .analytics_service import AnalyticsService
 from .auth_api_service import AuthApiNetworkError, AuthApiService, AuthApiServiceError
 from .court_service import CourtApiService, CourtCatalogService
@@ -19,6 +20,7 @@ __all__ = [
     "AuthApiService",
     "AuthApiServiceError",
     "ReservationConflictValidationError",
+    "AnalyticsApiService",
     "AnalyticsService",
     "CourtApiService",
     "CourtCatalogService",

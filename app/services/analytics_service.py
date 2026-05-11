@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import date
+from datetime import date, timedelta
 
 from app.utils.constants import SCHEDULE_LABELS, SERVICE_TYPES, TIME_OPTIONS
 from app.utils.time_slots import hour_slots_between, week_dates
@@ -241,6 +241,29 @@ class AnalyticsService:
         total_revenue = self.total_revenue()
         confirmed_revenue = self.total_revenue("confirmada")
         pending_revenue = round(total_revenue - confirmed_revenue, 2)
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=6)
+        month_start = today.replace(day=1)
+        today_reservations = [item for item in reservations if item.reservation_date == today.isoformat()]
+        week_reservations = [
+            item
+            for item in reservations
+            if week_start <= date.fromisoformat(item.reservation_date) <= week_end
+        ]
+        month_reservations = [
+            item
+            for item in reservations
+            if date.fromisoformat(item.reservation_date) >= month_start
+            and date.fromisoformat(item.reservation_date).month == today.month
+            and date.fromisoformat(item.reservation_date).year == today.year
+        ]
+        court_counts = Counter(item.service_type for item in reservations)
+        top_court = court_counts.most_common(1)[0][0] if court_counts else "--"
+        reservations_trend_counts = Counter(item.reservation_date for item in reservations)
+        revenue_trend = {}
+        for item in reservations:
+            revenue_trend[item.reservation_date] = revenue_trend.get(item.reservation_date, 0.0) + float(item.total or 0.0)
         hour_counts = self._hour_counts()
         occupancy_available_slots = max(
             len({item.reservation_date for item in reservations} or {date.today().isoformat()})
@@ -268,17 +291,42 @@ class AnalyticsService:
             "total_revenue": total_revenue,
             "confirmed_revenue": confirmed_revenue,
             "pending_revenue": pending_revenue,
+            "revenue_today": round(sum(float(item.total or 0.0) for item in today_reservations), 2),
+            "revenue_week": round(sum(float(item.total or 0.0) for item in week_reservations), 2),
+            "confirmed_reservations": len([item for item in reservations if item.status == "confirmada"]),
+            "pending_reservations": len([item for item in reservations if item.status == "pendiente"]),
+            "top_court": top_court,
             "most_requested_hour": peak_hour,
             "least_requested_hour": self.least_requested_hour(),
             "top_hours": [(hour, hour_counts.get(hour, 0)) for hour in sorted_hours[:3]],
             "least_hours": [(hour, hour_counts.get(hour, 0)) for hour in sorted_low_hours[:3]],
             "peak_ranges": self.peak_ranges(),
             "reservations_by_hour": self.reservations_by_hour(),
+            "reservations_trend": [
+                {"date": key, "reservations": reservations_trend_counts[key]}
+                for key in sorted(reservations_trend_counts)
+            ],
+            "revenue_trend": [
+                {"date": key, "revenue": round(revenue_trend[key], 2)}
+                for key in sorted(revenue_trend)
+            ],
             "occupancy_rate": occupancy,
             "available_slots": occupancy_available_slots,
             "occupied_slots": self.total_reserved_hours(),
             "schedule_distribution": self.schedule_distribution(),
             "occupancy_heatmap": self.occupancy_heatmap(),
+            "weekly_summary": {
+                "start_date": week_start.isoformat(),
+                "end_date": week_end.isoformat(),
+                "reservations": len(week_reservations),
+                "revenue": round(sum(float(item.total or 0.0) for item in week_reservations), 2),
+            },
+            "monthly_summary": {
+                "start_date": month_start.isoformat(),
+                "end_date": today.isoformat(),
+                "reservations": len(month_reservations),
+                "revenue": round(sum(float(item.total or 0.0) for item in month_reservations), 2),
+            },
             "insights": insights,
             "recommendations": recommendations,
             "headline_insight": insights[0] if insights else "Operacion estable sin hallazgos destacados.",

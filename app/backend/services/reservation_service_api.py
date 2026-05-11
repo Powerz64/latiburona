@@ -7,7 +7,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.backend.config import load_backend_pricing_settings
-from app.backend.models import Cancha, Reserva, User
+from app.backend.models import AuditLog, Cancha, Reserva, User
 from app.backend.schemas import ReservaCreate, ReservaUpdate
 from app.backend.services.auth_service import user_can_manage_global
 from app.services.pricing_service import PricingService
@@ -92,6 +92,17 @@ class ReservationServiceAPI:
                 "address": payload.address,
                 "status": payload.estado,
             }
+        )
+
+    def _audit(self, action: str, reserva: Reserva, details: str = "") -> None:
+        self.db.add(
+            AuditLog(
+                actor_user_id=self.current_user.id if self.current_user is not None else None,
+                action=action,
+                entity_type="reserva",
+                entity_id=reserva.id,
+                details=details,
+            )
         )
 
     def _to_datetime(self, fecha: str, hora: str) -> datetime:
@@ -222,6 +233,8 @@ class ReservationServiceAPI:
             people_count=cleaned["people_count"],
         )
         self.db.add(reserva)
+        self.db.flush()
+        self._audit("reservation_created", reserva, f"{reserva.fecha} {reserva.hora_inicio}-{reserva.hora_fin}")
         self.db.commit()
         self.db.refresh(reserva)
         return self.get_reserva(reserva.id) or reserva
@@ -272,6 +285,7 @@ class ReservationServiceAPI:
         reserva.people_count = cleaned["people_count"]
 
         self.db.add(reserva)
+        self._audit("reservation_updated", reserva, f"estado={reserva.estado}")
         self.db.commit()
         self.db.refresh(reserva)
         return self.get_reserva(reserva.id) or reserva
@@ -282,6 +296,7 @@ class ReservationServiceAPI:
             return None
         reserva.estado = "cancelada"
         self.db.add(reserva)
+        self._audit("reservation_cancelled", reserva)
         self.db.commit()
         self.db.refresh(reserva)
         return self.get_reserva(reserva.id) or reserva

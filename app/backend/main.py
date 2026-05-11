@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.backend.config import get_cors_origins
 from app.backend.db import SessionLocal, init_db
+from app.backend.routers.analytics import router as analytics_router
 from app.backend.routers.auth import router as auth_router
 from app.backend.routers.canchas import router as canchas_router
 from app.backend.routers.dashboard import router as dashboard_router
@@ -34,6 +35,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(analytics_router)
 app.include_router(dashboard_router)
 app.include_router(reservations_router)
 app.include_router(canchas_router)

@@ -4,6 +4,7 @@ from app.data import get_sample_reservations, get_sample_tournaments
 from app.services.cache_service import has_any_cache
 from app.services import (
     ApiClient,
+    AnalyticsApiService,
     AnalyticsService,
     AuthApiService,
     SessionService,
@@ -55,7 +56,12 @@ def build_services(base_dir: str | None = None) -> dict:
         tournament_service = TournamentApiService(api_client)
         sync_mode = "remote"
 
-    analytics_service = AnalyticsService(reservation_service)
+    fallback_analytics_service = AnalyticsService(reservation_service)
+    analytics_service = (
+        AnalyticsApiService(api_client, fallback_service=fallback_analytics_service)
+        if api_available
+        else fallback_analytics_service
+    )
     export_service = ExportService(pricing_service)
 
     if sync_mode == "local":

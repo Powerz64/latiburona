@@ -15,8 +15,12 @@ class Cancha(Base):
     nombre: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     direccion: Mapped[str] = mapped_column(String(200))
     ubicacion: Mapped[str] = mapped_column(String(200))
+    tipo: Mapped[str] = mapped_column(String(80), default="Futbol 5")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     reservas: Mapped[list["Reserva"]] = relationship(back_populates="cancha")
+    promociones: Mapped[list["Promotion"]] = relationship(back_populates="cancha")
 
 
 class Reserva(Base):
@@ -73,3 +77,40 @@ class User(Base):
 
     reservas: Mapped[list[Reserva]] = relationship(back_populates="user")
     torneos: Mapped[list[Torneo]] = relationship(back_populates="user")
+
+
+class AppSettingRecord(Base):
+    __tablename__ = "app_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    key: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    value: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Promotion(Base):
+    __tablename__ = "promotions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    cancha_id: Mapped[int | None] = mapped_column(ForeignKey("canchas.id"), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(140), index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    discount_percent: Mapped[float] = mapped_column(Float, default=0.0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    cancha: Mapped[Cancha | None] = relationship(back_populates="promociones")
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    action: Mapped[str] = mapped_column(String(80), index=True)
+    entity_type: Mapped[str] = mapped_column(String(80), index=True)
+    entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    details: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)

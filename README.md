@@ -89,9 +89,73 @@ El backend ahora soporta:
 - `POST /auth/refresh`
 - `GET /auth/me`
 - `POST /auth/logout`
+- `GET /analytics/overview`
+- `GET /analytics/reservations-by-day`
+- `GET /analytics/revenue-by-day`
+- `GET /analytics/occupancy-by-court`
+- `GET /analytics/peak-hours`
+- `GET /analytics/status-breakdown`
+- `GET /analytics/top-courts`
+- `GET /analytics/weekly-summary`
+- `GET /analytics/monthly-summary`
 - `GET /dashboard/summary`
 - `GET|POST|PUT|DELETE /reservas`
 - `GET|POST|PUT|DELETE /torneos`
+
+## Roadmap versionado
+
+### v1.1 - Persistencia y analitica
+
+Implementado de forma incremental sobre v1.0:
+
+- `DATABASE_URL` sigue siendo la fuente para PostgreSQL en produccion y SQLite queda como fallback local.
+- Inicializacion segura con `Base.metadata.create_all()` y migraciones aditivas; no se borran tablas ni datos.
+- Nuevas tablas persistentes: `app_settings`, `promotions`, `audit_logs`.
+- `canchas` agrega columnas aditivas `tipo`, `is_active`, `created_at`.
+- Auditoria basica para crear, actualizar y cancelar reservas.
+- Nuevos endpoints analiticos bajo `/analytics/*`.
+- `GET /dashboard/summary` conserva compatibilidad y devuelve el resumen enriquecido.
+- Dashboard y reportes Kivy consumen metricas enriquecidas cuando el backend remoto esta disponible.
+- Exportacion PDF incluye indicadores diarios/semanales y estado confirmado/pendiente.
+
+Notas de migracion:
+
+- Las migraciones son aditivas y se ejecutan al iniciar el backend.
+- Si `DATABASE_URL` no existe, se usa SQLite local en `server.db`.
+- Para Render con PostgreSQL se requiere `psycopg[binary]`.
+- Rollback recomendado: volver al commit anterior y conservar la base; las columnas/tablas nuevas no interfieren con v1.0.
+
+### v1.2 - Pagos y reservas online
+
+Plan aprobado, no implementado todavia para no mezclar cambios de negocio con v1.1:
+
+- Agregar modelo `payments` con estado `pending`, `paid`, `failed`, `refunded`, `cancelled`.
+- Agregar estado de pago a reserva: `unpaid`, `partially_paid`, `paid`, `cancelled`.
+- Crear `PaymentService` con proveedor manual/mock primero.
+- Exponer controles admin para marcar pago, pago parcial, cancelacion y reembolso.
+- Mostrar al cliente precio, estado de pago e instrucciones.
+- Dejar adaptadores preparados para Wompi, Mercado Pago y Stripe sin acoplarlos a Kivy.
+
+Rollback previsto:
+
+- Mantener pagos como tabla independiente y no bloquear la creacion de reservas existentes.
+- Feature flag recomendado: `LATIBURONA_PAYMENTS_ENABLED`.
+
+### v2.0 - Multi-sede, movil y tiempo real
+
+Fase de arquitectura mayor, requiere rama separada:
+
+- Modelar `organizations`, `locations`, canchas por sede y usuarios asignados por alcance.
+- Roles previstos: `super_admin`, `org_admin`, `location_admin`, `operator`, `client`.
+- Aislar datos por organizacion/sede antes de exponer selectores UI.
+- Agregar capa de eventos y WebSocket para reservas, pagos, torneos y ocupacion en vivo.
+- Preparar API movil con payloads livianos, refresh token robusto y revision CORS/seguridad.
+- Documentar checklist Android/Buildozer antes de construir APK.
+
+Rollback previsto:
+
+- Introducir multi-sede con columnas nullable y feature flag.
+- Mantener la sede actual como organizacion/sede por defecto.
 
 ## Despliegue en Render
 

@@ -80,12 +80,62 @@ def _seed_canchas(session: Session) -> None:
     session.commit()
 
 
+def _seed_promotions(session: Session) -> None:
+    from app.backend.models import Cancha, Promotion
+
+    if session.scalar(select(Promotion.id).limit(1)) is not None:
+        return
+
+    promotions_by_court = {
+        "La Jaula Barranquilla": ("Promo madrugadores", "6AM-9AM con 20% de descuento", 20.0),
+        "Brazuca Soccer": ("Liga universitaria", "5+ jugadores reciben bebidas gratis", 0.0),
+        "Brasileirao": ("Noche Prime", "Despues de 8PM incluye balon gratis", 0.0),
+        "La Castellana": ("Fin de semana familiar", "Ninos entran gratis los domingos", 0.0),
+        "Soccer House": ("Reto de martes", "2 horas por precio de 1.5", 25.0),
+    }
+    canchas = {item.nombre: item for item in session.scalars(select(Cancha)).all()}
+    for cancha_name, (title, description, discount_percent) in promotions_by_court.items():
+        cancha = canchas.get(cancha_name)
+        session.add(
+            Promotion(
+                cancha_id=cancha.id if cancha else None,
+                title=title,
+                description=description,
+                discount_percent=discount_percent,
+                is_active=True,
+            )
+        )
+    session.commit()
+
+
+def _seed_app_settings_snapshot(session: Session) -> None:
+    from app.backend.models import AppSettingRecord
+
+    defaults = {
+        "price_morning": os.getenv("LATIBURONA_PRICE_MORNING", "70000"),
+        "price_afternoon": os.getenv("LATIBURONA_PRICE_AFTERNOON", "90000"),
+        "price_night": os.getenv("LATIBURONA_PRICE_NIGHT", "120000"),
+        "weekend_surcharge": os.getenv("LATIBURONA_WEEKEND_SURCHARGE", "10"),
+        "bulk_discount": os.getenv("LATIBURONA_BULK_DISCOUNT", "15"),
+        "bulk_people_threshold": os.getenv("LATIBURONA_BULK_PEOPLE_THRESHOLD", "5"),
+    }
+    existing = {
+        item.key
+        for item in session.scalars(select(AppSettingRecord)).all()
+    }
+    for key, value in defaults.items():
+        if key not in existing:
+            session.add(AppSettingRecord(key=key, value=str(value)))
+    session.commit()
+
+
 def _ensure_schema_compatibility() -> None:
     inspector = inspect(engine)
     with engine.begin() as connection:
         users_columns = {column["name"] for column in inspector.get_columns("users")} if inspector.has_table("users") else set()
         reservas_columns = {column["name"] for column in inspector.get_columns("reservas")} if inspector.has_table("reservas") else set()
         torneos_columns = {column["name"] for column in inspector.get_columns("torneos")} if inspector.has_table("torneos") else set()
+        canchas_columns = {column["name"] for column in inspector.get_columns("canchas")} if inspector.has_table("canchas") else set()
 
         if "role" not in users_columns:
             connection.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'client'"))
@@ -95,23 +145,24 @@ def _ensure_schema_compatibility() -> None:
             connection.execute(text("ALTER TABLE reservas ADD COLUMN user_id INTEGER"))
         if "user_id" not in torneos_columns:
             connection.execute(text("ALTER TABLE torneos ADD COLUMN user_id INTEGER"))
+        if "tipo" not in canchas_columns:
+            connection.execute(text("ALTER TABLE canchas ADD COLUMN tipo VARCHAR(80) DEFAULT 'Futbol 5'"))
+        if "is_active" not in canchas_columns:
+            connection.execute(text("ALTER TABLE canchas ADD COLUMN is_active BOOLEAN DEFAULT TRUE"))
+        if "created_at" not in canchas_columns:
+            connection.execute(text("ALTER TABLE canchas ADD COLUMN created_at TIMESTAMP"))
 
 
 def _backfill_user_roles(session: Session) -> None:
-    session.execute(
-        text(
-            """
-            UPDATE users
-            SET role = CASE
-                WHEN COALESCE(is_admin, 0) = 1 THEN 'admin'
-                ELSE 'client'
-            END
-            WHERE role IS NULL OR TRIM(role) = ''
-            """
-        )
-    )
-    session.execute(text("UPDATE users SET is_active = TRUE WHERE is_active IS NULL"))
-    session.execute(text("UPDATE users SET is_admin = TRUE WHERE role = 'admin'"))
+    from app.backend.models import User
+
+    for user in session.scalars(select(User)).all():
+        if not str(user.role or "").strip():
+            user.role = "admin" if bool(user.is_admin) else "client"
+        if user.is_active is None:
+            user.is_active = True
+        if user.role == "admin":
+            user.is_admin = True
     session.commit()
 
 
@@ -212,6 +263,8 @@ def init_db() -> None:
         session.execute(text("SELECT 1"))
         _backfill_user_roles(session)
         _seed_canchas(session)
+        _seed_app_settings_snapshot(session)
+        _seed_promotions(session)
         _migrate_legacy_reservas(session)
         _migrate_legacy_torneos(session)
         seed_admin_user(session)

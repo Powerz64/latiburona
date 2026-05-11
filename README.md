@@ -119,5 +119,5 @@ El backend ya quedo preparado para Render con PostgreSQL usando [render.yaml](/C
 Para clientes Windows y Android, configura la variable de entorno `LATIBURONA_API_BASE_URL` con la URL publica del backend, por ejemplo:
 
 ```text
-https://latiburona-api.onrender.com
+https://latiburona-1.onrender.com
 ```

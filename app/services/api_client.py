@@ -5,7 +5,7 @@ import time
 
 import requests
 
-PRODUCTION_API_BASE_URL = "https://latiburona-api.onrender.com"
+PRODUCTION_API_BASE_URL = "https://latiburona-1.onrender.com"
 MAX_RETRIES = 2
 RETRY_DELAY_SECONDS = 0.5
 NETWORK_ERROR_COOLDOWN_SECONDS = 5

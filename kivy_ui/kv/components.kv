@@ -848,6 +848,205 @@
         size_hint_y: None
         height: self.minimum_height
 
+<ReservationCourtCard>:
+    size_hint_y: None
+    height: dp(236)
+    padding: dp(0)
+    spacing: dp(0)
+    radius: dp(18)
+    FloatLayout:
+        BoxLayout:
+            orientation: "vertical"
+            size: root.size
+            pos: root.pos
+            FloatLayout:
+                size_hint_y: None
+                height: dp(76)
+                Image:
+                    source: root.image_source
+                    allow_stretch: True
+                    keep_ratio: False
+                    size: self.parent.width * root.image_zoom, self.parent.height * root.image_zoom
+                    pos: self.parent.x - (self.width - self.parent.width) / 2, self.parent.y - (self.height - self.parent.height) / 2
+                Widget:
+                    size: self.parent.size
+                    pos: self.parent.pos
+                    canvas:
+                        Color:
+                            rgba: 0, 0, 0, 0.34
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                        Color:
+                            rgba: root.accent_color[0], root.accent_color[1], root.accent_color[2], 0.34
+                        Rectangle:
+                            pos: self.x, self.y
+                            size: self.width, dp(3)
+                Label:
+                    text: "Seleccionada" if root.is_selected else root.status_text
+                    color: root.badge_text_color
+                    font_size: "11sp"
+                    bold: True
+                    size_hint: None, None
+                    size: min(self.texture_size[0] + dp(22), dp(142)), dp(28)
+                    pos: self.parent.right - self.width - dp(10), self.parent.top - dp(38)
+                    text_size: self.width - dp(12), self.height
+                    halign: "center"
+                    valign: "middle"
+                    shorten: True
+                    shorten_from: "right"
+                    canvas.before:
+                        Color:
+                            rgba: root.badge_color
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(14)]
+            BoxLayout:
+                orientation: "vertical"
+                padding: dp(12), dp(10)
+                spacing: dp(5)
+                Label:
+                    text: root.field_name
+                    color: hx(app.theme_state.text_primary)
+                    font_size: "14sp"
+                    bold: True
+                    size_hint_y: None
+                    height: dp(18)
+                    text_size: self.width, dp(18)
+                    halign: "left"
+                    valign: "middle"
+                    shorten: True
+                    shorten_from: "right"
+                Label:
+                    text: root.location_text + " | " + root.address_text
+                    color: hx(app.theme_state.text_secondary)
+                    font_size: "11sp"
+                    size_hint_y: None
+                    height: dp(16)
+                    text_size: self.width, dp(16)
+                    halign: "left"
+                    valign: "middle"
+                    shorten: True
+                    shorten_from: "right"
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(20)
+                    spacing: dp(8)
+                    Label:
+                        text: root.occupancy_text
+                        color: root.badge_text_color
+                        font_size: "11sp"
+                        bold: True
+                        text_size: self.size
+                        halign: "left"
+                        valign: "middle"
+                    Label:
+                        text: root.slots_text
+                        color: hx(app.theme_state.text_muted)
+                        font_size: "11sp"
+                        text_size: self.size
+                        halign: "right"
+                        valign: "middle"
+                        shorten: True
+                        shorten_from: "right"
+                Widget:
+                    size_hint_y: None
+                    height: dp(7)
+                    canvas:
+                        Color:
+                            rgba: hx(app.theme_state.surface_soft)
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(5)]
+                        Color:
+                            rgba: root.accent_color
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: max(self.width * root.occupancy_ratio, dp(8)) if root.occupancy_ratio > 0 else 0, self.height
+                            radius: [dp(5)]
+                Label:
+                    text: root.promotion_text
+                    color: hx(app.theme_state.success) if root.is_selected else hx(app.theme_state.primary)
+                    font_size: "11sp"
+                    size_hint_y: None
+                    height: dp(16)
+                    text_size: self.width, dp(16)
+                    halign: "left"
+                    valign: "middle"
+                    shorten: True
+                    shorten_from: "right"
+                GridLayout:
+                    cols: 2
+                    spacing: dp(6)
+                    size_hint_y: None
+                    height: dp(44)
+                    Label:
+                        text: root.court_type_text
+                        color: hx(app.theme_state.text_secondary)
+                        font_size: "10sp"
+                        text_size: self.width - dp(8), self.height
+                        halign: "center"
+                        valign: "middle"
+                        shorten: True
+                        shorten_from: "right"
+                        canvas.before:
+                            Color:
+                                rgba: hx(app.theme_state.surface_soft)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(10)]
+                    Label:
+                        text: root.peak_text
+                        color: hx(app.theme_state.text_secondary)
+                        font_size: "10sp"
+                        text_size: self.width - dp(8), self.height
+                        halign: "center"
+                        valign: "middle"
+                        shorten: True
+                        shorten_from: "right"
+                        canvas.before:
+                            Color:
+                                rgba: hx(app.theme_state.surface_soft)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(10)]
+                    Label:
+                        text: root.features_text.split("|")[0].strip() if "|" in root.features_text else root.features_text
+                        color: hx(app.theme_state.text_secondary)
+                        font_size: "10sp"
+                        text_size: self.width - dp(8), self.height
+                        halign: "center"
+                        valign: "middle"
+                        shorten: True
+                        shorten_from: "right"
+                        canvas.before:
+                            Color:
+                                rgba: hx(app.theme_state.surface_soft)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(10)]
+                    Label:
+                        text: root.features_text.split("|")[1].strip() if "|" in root.features_text else "Acceso rapido"
+                        color: hx(app.theme_state.text_secondary)
+                        font_size: "10sp"
+                        text_size: self.width - dp(8), self.height
+                        halign: "center"
+                        valign: "middle"
+                        shorten: True
+                        shorten_from: "right"
+                        canvas.before:
+                            Color:
+                                rgba: hx(app.theme_state.surface_soft)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(10)]
+
 <KpiCard>:
     size_hint_y: None
     height: dp(120)

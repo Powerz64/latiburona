@@ -12,8 +12,10 @@ from app.services import ReservationConflictValidationError
 from app.utils.constants import END_TIME_OPTIONS, SERVICE_TYPES, TIME_OPTIONS
 from app.utils.formatters import format_currency, format_date, format_reservation_window
 from app.utils.validators import ValidationError
+from kivy_ui.components.cards import ReservationCourtCard
 from kivy_ui.components.rows import ReservationRow
 from kivy_ui.screens.base_screen import ServiceScreen
+from kivy_ui.theme import FIELD_IMAGES
 
 
 FIELDS = {
@@ -36,6 +38,58 @@ DEFAULT_FIELD_BY_SERVICE_TYPE = {
     "Zona recreativa": "Brazuca Soccer",
     "Cancha sintetica": "Brasileirao",
     "Piscina": "Soccer House",
+}
+FIELD_CARD_META = {
+    "La Jaula Barranquilla": {
+        "location": "Riomar",
+        "court_type": "Futbol 5 premium",
+        "promotion": "Promo madrugadores",
+        "features": "LED incluido | Parqueadero",
+        "peak": "Pico 7PM",
+        "image_source": FIELD_IMAGES["la_jaula"],
+        "tone": "success",
+        "base": 0.78,
+    },
+    "Brazuca Soccer": {
+        "location": "Villa Campestre",
+        "court_type": "Sintetica 7v7",
+        "promotion": "Liga universitaria",
+        "features": "Zona cubierta | Acceso norte",
+        "peak": "Pico 6PM",
+        "image_source": FIELD_IMAGES["brazuca"],
+        "tone": "primary",
+        "base": 0.54,
+    },
+    "Brasileirao": {
+        "location": "Norte Centro Historico",
+        "court_type": "Grama tech",
+        "promotion": "Promo nocturna",
+        "features": "LED incluido | Balon gratis",
+        "peak": "Pico 8PM",
+        "image_source": FIELD_IMAGES["brasileirao"],
+        "tone": "success",
+        "base": 0.68,
+    },
+    "La Castellana": {
+        "location": "La Castellana",
+        "court_type": "Cancha familiar",
+        "promotion": "Fin de semana familiar",
+        "features": "Parqueadero | Acceso rapido",
+        "peak": "Pico 5PM",
+        "image_source": FIELD_IMAGES["castellana"],
+        "tone": "primary",
+        "base": 0.48,
+    },
+    "Soccer House": {
+        "location": "Suroriente",
+        "court_type": "Cancha comunitaria",
+        "promotion": "Reto de martes",
+        "features": "Zona cubierta | Ruta Murillo",
+        "peak": "Pico 9PM",
+        "image_source": FIELD_IMAGES["soccer_house"],
+        "tone": "success",
+        "base": 0.36,
+    },
 }
 FIELD_ALIASES = {
     "Brazuca Soccer (Villa Campestre)": "Brazuca Soccer",
@@ -128,6 +182,9 @@ class ReservationsScreen(ServiceScreen):
     selected_range_text = StringProperty("Sin rango seleccionado")
     save_feedback_text = StringProperty("")
     save_feedback_tone = StringProperty("neutral")
+    selected_court_name = StringProperty(FIELD_NAMES[0])
+    live_court_summary_text = StringProperty("Selecciona una cancha para completar el formulario.")
+    live_courts_data = ListProperty([])
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -144,12 +201,15 @@ class ReservationsScreen(ServiceScreen):
         self.on_field_selected(self.ids.service_spinner.text)
         self._update_layout()
         self._reset_quote_preview()
+        self._render_live_courts()
 
     def _update_layout(self, *_args) -> None:
         if not self.ids:
             return
         self.ids.content_grid.cols = 1 if self.width < dp(1180) else 2
         self.ids.form_grid.cols = 1 if self.width < dp(1160) else 2
+        if "live_courts_grid" in self.ids:
+            self.ids.live_courts_grid.cols = 1 if self.width < dp(720) else 2
 
     def refresh(self) -> None:
         self.set_status("Cargando reservas...")
@@ -239,6 +299,7 @@ class ReservationsScreen(ServiceScreen):
                 else "No hay partidos registrados todavia."
             ),
             "reservations_data": reservations_payload,
+            "live_courts_data": self._build_live_courts_payload(reservations),
             "empty_state_text": (
                 "No hay partidos registrados todavia. Crea el primero desde el formulario."
                 if not reservations
@@ -262,10 +323,12 @@ class ReservationsScreen(ServiceScreen):
                 else payload["summary_text"]
             )
             self.reservations_data = list(payload["reservations_data"])
+            self.live_courts_data = list(payload.get("live_courts_data", []))
             self.empty_state_text = payload["empty_state_text"]
         finally:
             self._suspend_form_events = False
         self._render_reservations()
+        self._render_live_courts()
         self.update_quote()
         self._request_availability_refresh(show_loading=False)
         self.set_status(
@@ -281,6 +344,7 @@ class ReservationsScreen(ServiceScreen):
         self.availability_text = "No fue posible consultar disponibilidad."
         self.availability_color = "danger"
         self._render_reservations()
+        self._render_live_courts()
         self.set_status(f"Error al cargar reservas: {error}")
 
     def _render_reservations(self) -> None:
@@ -309,6 +373,81 @@ class ReservationsScreen(ServiceScreen):
         finally:
             self._suspend_form_events = False
         self.on_field_selected(self.ids.service_spinner.text)
+
+    def _build_live_courts_payload(self, reservations: list) -> list[dict]:
+        selected = self.selected_court_name or self._selected_field_name()
+        items = []
+        for index, field_name in enumerate(FIELD_NAMES):
+            meta = FIELD_CARD_META[field_name]
+            active_reservations = [
+                item for item in reservations
+                if resolve_field_name(item.service_type, item.address) == field_name
+                and item.status not in {"cancelada", "CANCELLED", "FAILED", "REFUNDED", "EXPIRED"}
+            ]
+            ratio = max(0.08, min(0.96, float(meta["base"]) + (len(active_reservations) * 0.035)))
+            open_slots = max(1, 10 - round(ratio * 10))
+            if ratio >= 0.82:
+                status = "Alta demanda"
+                tone = "success"
+            elif ratio >= 0.58:
+                status = "Ritmo activo"
+                tone = str(meta["tone"])
+            else:
+                status = "Disponible"
+                tone = "primary"
+            items.append(
+                {
+                    "field_name": field_name,
+                    "location": meta["location"],
+                    "address": FIELDS[field_name],
+                    "status": status,
+                    "occupancy": f"{round(ratio * 100)}% ocupacion",
+                    "slots": f"{open_slots} slots disponibles",
+                    "promotion": meta["promotion"],
+                    "court_type": meta["court_type"],
+                    "peak": meta["peak"],
+                    "features": meta["features"],
+                    "image_source": meta["image_source"],
+                    "occupancy_ratio": ratio,
+                    "tone": tone,
+                    "is_selected": field_name == selected,
+                    "order": index,
+                }
+            )
+        return items
+
+    def _render_live_courts(self) -> None:
+        if not self.ids or "live_courts_grid" not in self.ids:
+            return
+        container = self.ids.live_courts_grid
+        container.clear_widgets()
+        cards = list(self.live_courts_data or self._build_live_courts_payload([]))
+        for item in cards:
+            item = dict(item)
+            item["is_selected"] = item["field_name"] == self.selected_court_name
+            card = ReservationCourtCard(on_select=self.select_live_court)
+            card.set_data(item)
+            container.add_widget(card)
+        selected_meta = FIELD_CARD_META.get(self.selected_court_name, {})
+        self.live_court_summary_text = (
+            f"{self.selected_court_name} | {selected_meta.get('location', 'Barranquilla')} | "
+            f"{selected_meta.get('peak', 'Pico --')}"
+        )
+
+    def select_live_court(self, field_name: str) -> None:
+        if field_name not in FIELDS:
+            return
+        self.selected_court_name = field_name
+        if self.ids:
+            self._suspend_form_events = True
+            try:
+                self.ids.service_spinner.text = field_name
+                self.ids.address_input.text = field_address_for(field_name)
+            finally:
+                self._suspend_form_events = False
+        self._render_live_courts()
+        self._handle_form_change()
+        self.set_status(f"Cancha seleccionada: {field_name}.")
 
     def _payload(self) -> dict:
         field_name = self.ids.service_spinner.text.strip()
@@ -436,7 +575,10 @@ class ReservationsScreen(ServiceScreen):
     def on_field_selected(self, field_name: str) -> None:
         if not self.ids:
             return
+        if field_name in FIELDS:
+            self.selected_court_name = field_name
         self.ids.address_input.text = field_address_for(field_name, "")
+        self._render_live_courts()
 
     def _ensure_valid_field_selection(self) -> bool:
         field_name = self._selected_field_name()
@@ -798,6 +940,8 @@ class ReservationsScreen(ServiceScreen):
         self._reset_quote_preview()
         self.availability_text = "Selecciona fecha, cancha y rango para validar disponibilidad."
         self.availability_color = "neutral"
+        self.selected_court_name = default_service
+        self._render_live_courts()
         self.set_status("Formulario limpio y listo para una nueva reserva.")
 
     def load_reservation(self, reservation_id: int) -> None:
@@ -833,6 +977,8 @@ class ReservationsScreen(ServiceScreen):
             self.ids.address_input.text = field_address_for(field_name, reservation.address)
         finally:
             self._suspend_form_events = False
+        self.selected_court_name = field_name
+        self._render_live_courts()
         self.update_quote()
         self._request_availability_refresh(show_loading=False)
         self.set_status(f"Reserva #{reservation.id} cargada en el formulario.")
@@ -855,6 +1001,8 @@ class ReservationsScreen(ServiceScreen):
             self.ids.address_input.text = field_address_for(self.ids.service_spinner.text, field_address_for(default_service))
         finally:
             self._suspend_form_events = False
+        self.selected_court_name = self.ids.service_spinner.text
+        self._render_live_courts()
         self.update_quote()
         self._request_availability_refresh(show_loading=False)
         self.set_status("Rango recibido desde el calendario de disponibilidad.")

@@ -6,7 +6,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.graphics import Color, Line, RoundedRectangle
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, DictProperty, ListProperty, NumericProperty, StringProperty
+from kivy.properties import BooleanProperty, DictProperty, ListProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 
@@ -568,6 +568,82 @@ class LiveOccupancyCard(BaseCard):
         self.shadow_color = rgba(theme["shadow"], 0.48 if self.is_hovered else 0.36)
         self.inner_border_color = rgba("#FFFFFF", 0.11 if self.is_hovered else 0.065)
         self.shadow_offset = dp(6 if self.is_hovered else 3)
+
+
+class ReservationCourtCard(ButtonBehavior, BaseCard):
+    field_name = StringProperty("")
+    location_text = StringProperty("")
+    address_text = StringProperty("")
+    status_text = StringProperty("Disponible")
+    occupancy_text = StringProperty("0% ocupacion")
+    slots_text = StringProperty("Cupos listos")
+    promotion_text = StringProperty("Promo activa")
+    court_type_text = StringProperty("Futbol 5")
+    peak_text = StringProperty("Pico --")
+    features_text = StringProperty("LED | Parqueadero")
+    image_source = StringProperty("")
+    tone = StringProperty("primary")
+    is_selected = BooleanProperty(False)
+    accent_color = ListProperty(rgba("#00C2FF"))
+    badge_color = ListProperty(rgba("#06364A"))
+    badge_text_color = ListProperty(rgba("#A5F3FC"))
+    occupancy_ratio = NumericProperty(0.0)
+    on_select = ObjectProperty(None, allownone=True)
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        app = App.get_running_app()
+        if app is not None:
+            app.bind(theme_mode=lambda *_args: self._apply_visual_state())
+        self.bind(is_hovered=lambda *_args: self._apply_visual_state())
+        self.bind(is_selected=lambda *_args: self._apply_visual_state())
+        self.bind(tone=lambda *_args: self._apply_visual_state())
+        self._apply_visual_state()
+
+    def on_release(self) -> None:
+        if self.on_select:
+            self.on_select(self.field_name)
+
+    def set_loading(self, payload: dict | None = None) -> None:
+        self.is_loading = True
+        self._start_loading_pulse(min_opacity=0.74, duration=0.7)
+
+    def set_error(self, message: str) -> None:
+        self.stop_loading_state()
+        self.status_text = str(message or "Sin datos")
+        self.tone = "warning"
+
+    def set_data(self, data) -> None:
+        self.stop_loading_state()
+        payload = dict(data) if isinstance(data, dict) else {}
+        self.field_name = str(payload.get("field_name", self.field_name))
+        self.location_text = str(payload.get("location", self.location_text))
+        self.address_text = str(payload.get("address", self.address_text))
+        self.status_text = str(payload.get("status", self.status_text))
+        self.occupancy_text = str(payload.get("occupancy", self.occupancy_text))
+        self.slots_text = str(payload.get("slots", self.slots_text))
+        self.promotion_text = str(payload.get("promotion", self.promotion_text))
+        self.court_type_text = str(payload.get("court_type", self.court_type_text))
+        self.peak_text = str(payload.get("peak", self.peak_text))
+        self.features_text = str(payload.get("features", self.features_text))
+        self.image_source = str(payload.get("image_source", self.image_source))
+        self.occupancy_ratio = max(0.0, min(1.0, float(payload.get("occupancy_ratio", self.occupancy_ratio) or 0)))
+        self.tone = str(payload.get("tone", self.tone))
+        self.is_selected = bool(payload.get("is_selected", self.is_selected))
+        self._apply_visual_state()
+
+    def _apply_visual_state(self) -> None:
+        theme = active_theme_hex()
+        palette = tone_palette(theme, self.tone or "primary")
+        self.accent_color = rgba(theme["success"] if self.is_selected else palette["accent"])
+        self.badge_color = rgba(theme["success_soft"] if self.is_selected else palette["soft"], 0.96)
+        self.badge_text_color = rgba("#C7FFBC" if self.is_selected else palette["text"])
+        glow = 0.055 if self.is_selected else 0.03 if self.is_hovered else 0.0
+        self.background_color = brighten_color(rgba(theme["surface_alt"]), glow, alpha=1)
+        self.border_color = rgba(theme["success"] if self.is_selected else palette["accent"], 0.92 if self.is_selected else 0.68 if self.is_hovered else 0.38)
+        self.shadow_color = rgba(theme["success"] if self.is_selected else theme["shadow"], 0.30 if self.is_selected else 0.42 if self.is_hovered else 0.30)
+        self.inner_border_color = rgba("#FFFFFF", 0.13 if self.is_selected else 0.09 if self.is_hovered else 0.055)
+        self.shadow_offset = dp(7 if self.is_selected else 5 if self.is_hovered else 2)
 
 
 class SportsToggle(ButtonBehavior, CardBox):

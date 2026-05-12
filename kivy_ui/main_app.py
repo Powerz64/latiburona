@@ -33,6 +33,7 @@ from kivy_ui.components import (
     LiveOccupancyRow,
     OccupancyHeatmap,
     PrimaryButton,
+    ReservationCourtCard,
     ReservationRow,
     SecondaryButton,
     SidebarButton,

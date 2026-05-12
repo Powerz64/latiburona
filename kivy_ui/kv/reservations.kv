@@ -88,7 +88,7 @@
 
                         CardBox:
                             size_hint_y: None
-                            height: self.minimum_height if root.width < dp(1180) else max(self.minimum_height, recent_reservations_card.height)
+                            height: self.minimum_height
                             padding: dp(20)
                             spacing: dp(14)
                             background_color: hx(app.theme_state.surface)
@@ -386,72 +386,142 @@
 
                             Widget:
 
-                        CardBox:
-                            id: recent_reservations_card
+                        BoxLayout:
+                            id: right_column
+                            orientation: "vertical"
                             size_hint_y: None
                             height: self.minimum_height
-                            padding: dp(20)
                             spacing: dp(14)
-                            background_color: hx(app.theme_state.surface)
-                            border_color: hx(app.theme_state.border)
-
-                            Label:
-                                text: "Partidos recientes"
-                                color: hx(app.theme_state.text_primary)
-                                font_size: "20sp"
-                                bold: True
-                                size_hint_y: None
-                                height: dp(28)
-                                text_size: self.width, dp(28)
-                                halign: "left"
-                                valign: "middle"
-
-                            Label:
-                                text: root.summary_text
-                                color: hx(app.theme_state.text_muted)
-                                font_size: ds.FONT_LABEL
-                                size_hint_y: None
-                                height: dp(36)
-                                text_size: self.width, None
-                                halign: "left"
-                                valign: "top"
-
-                            Widget:
-                                size_hint_y: None
-                                height: dp(14)
 
                             CardBox:
+                                id: live_courts_card
                                 size_hint_y: None
-                                height: dp(120) if not root.has_reservations else 0
-                                opacity: 0 if root.has_reservations else 1
-                                padding: dp(16)
-                                spacing: dp(8)
-                                background_color: hx(app.theme_state.surface_alt)
+                                height: self.minimum_height
+                                padding: dp(18)
+                                spacing: dp(12)
+                                background_color: hx(app.theme_state.surface)
+                                border_color: hx(app.theme_state.primary)
+
+                                BoxLayout:
+                                    size_hint_y: None
+                                    height: dp(42)
+                                    spacing: dp(10)
+                                    Label:
+                                        text: "🏟"
+                                        font_name: ds.EMOJI_FONT
+                                        color: hx(app.theme_state.success)
+                                        font_size: "22sp"
+                                        size_hint_x: None
+                                        width: dp(30)
+                                        text_size: self.size
+                                        halign: "center"
+                                        valign: "middle"
+                                    BoxLayout:
+                                        orientation: "vertical"
+                                        spacing: dp(1)
+                                        Label:
+                                            text: "Selector live de canchas"
+                                            color: hx(app.theme_state.text_primary)
+                                            font_size: "19sp"
+                                            bold: True
+                                            size_hint_y: None
+                                            height: dp(22)
+                                            text_size: self.width, dp(22)
+                                            halign: "left"
+                                            valign: "middle"
+                                        Label:
+                                            text: root.live_court_summary_text
+                                            color: hx(app.theme_state.text_muted)
+                                            font_size: ds.FONT_LABEL
+                                            size_hint_y: None
+                                            height: dp(18)
+                                            text_size: self.width, dp(18)
+                                            halign: "left"
+                                            valign: "middle"
+                                            shorten: True
+                                            shorten_from: "right"
+                                    Label:
+                                        text: "EN VIVO"
+                                        color: hx(app.theme_state.success)
+                                        font_size: "11sp"
+                                        bold: True
+                                        size_hint_x: None
+                                        width: dp(78)
+                                        text_size: self.width, self.height
+                                        halign: "right"
+                                        valign: "middle"
+
+                                GridLayout:
+                                    id: live_courts_grid
+                                    cols: 2
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                                    spacing: dp(10)
+                                    row_default_height: dp(236)
+                                    row_force_default: True
+
+                            CardBox:
+                                id: recent_reservations_card
+                                size_hint_y: None
+                                height: self.minimum_height
+                                padding: dp(18)
+                                spacing: dp(12)
+                                background_color: hx(app.theme_state.surface)
                                 border_color: hx(app.theme_state.border)
-                                shadow_offset: dp(0)
 
                                 Label:
-                                    text: "Sin partidos"
+                                    text: "Partidos recientes"
                                     color: hx(app.theme_state.text_primary)
-                                    font_size: "18sp"
+                                    font_size: "20sp"
                                     bold: True
                                     size_hint_y: None
-                                    height: dp(22)
-                                    text_size: self.width, dp(22)
+                                    height: dp(28)
+                                    text_size: self.width, dp(28)
                                     halign: "left"
                                     valign: "middle"
 
                                 Label:
-                                    text: root.empty_state_text
+                                    text: root.summary_text
                                     color: hx(app.theme_state.text_muted)
                                     font_size: ds.FONT_LABEL
+                                    size_hint_y: None
+                                    height: dp(36)
                                     text_size: self.width, None
                                     halign: "left"
                                     valign: "top"
 
-                            BoxLayout:
-                                id: reservations_list
-                                orientation: "vertical"
-                                size_hint_y: None
-                                height: self.minimum_height
-                                spacing: dp(12)
+                                CardBox:
+                                    size_hint_y: None
+                                    height: dp(104) if not root.has_reservations else 0
+                                    opacity: 0 if root.has_reservations else 1
+                                    padding: dp(14)
+                                    spacing: dp(6)
+                                    background_color: hx(app.theme_state.surface_alt)
+                                    border_color: hx(app.theme_state.border)
+                                    shadow_offset: dp(0)
+
+                                    Label:
+                                        text: "Sin partidos"
+                                        color: hx(app.theme_state.text_primary)
+                                        font_size: "18sp"
+                                        bold: True
+                                        size_hint_y: None
+                                        height: dp(22)
+                                        text_size: self.width, dp(22)
+                                        halign: "left"
+                                        valign: "middle"
+
+                                    Label:
+                                        text: root.empty_state_text
+                                        color: hx(app.theme_state.text_muted)
+                                        font_size: ds.FONT_LABEL
+                                        text_size: self.width, None
+                                        halign: "left"
+                                        valign: "top"
+
+                                BoxLayout:
+                                    id: reservations_list
+                                    orientation: "vertical"
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                                    spacing: dp(12)

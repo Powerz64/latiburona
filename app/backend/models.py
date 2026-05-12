@@ -45,6 +45,9 @@ class Reserva(Base):
 
     user: Mapped["User | None"] = relationship(back_populates="reservas")
     cancha: Mapped[Cancha] = relationship(back_populates="reservas")
+    payment_transactions: Mapped[list["PaymentTransaction"]] = relationship(back_populates="reservation")
+    public_links: Mapped[list["ReservationPublicLink"]] = relationship(back_populates="reservation")
+    expirations: Mapped[list["ReservationExpiration"]] = relationship(back_populates="reservation")
 
 
 class Torneo(Base):
@@ -114,3 +117,47 @@ class AuditLog(Base):
     entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     details: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class PaymentTransaction(Base):
+    __tablename__ = "payment_transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    reservation_id: Mapped[int] = mapped_column(ForeignKey("reservas.id"), index=True)
+    provider: Mapped[str] = mapped_column(String(40), default="manual", index=True)
+    provider_payment_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    provider_preference_id: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    amount: Mapped[float] = mapped_column(Float, default=0.0)
+    currency: Mapped[str] = mapped_column(String(8), default="COP")
+    payment_url: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    raw_payload_json: Mapped[str] = mapped_column(Text, default="")
+
+    reservation: Mapped[Reserva] = relationship(back_populates="payment_transactions")
+
+
+class ReservationPublicLink(Base):
+    __tablename__ = "reservation_public_links"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    reservation_id: Mapped[int] = mapped_column(ForeignKey("reservas.id"), index=True)
+    token: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    reservation: Mapped[Reserva] = relationship(back_populates="public_links")
+
+
+class ReservationExpiration(Base):
+    __tablename__ = "reservation_expirations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    reservation_id: Mapped[int] = mapped_column(ForeignKey("reservas.id"), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+
+    reservation: Mapped[Reserva] = relationship(back_populates="expirations")

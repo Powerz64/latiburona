@@ -17,7 +17,7 @@ class AnalyticsService:
         return [
             item
             for item in self.reservation_service.get_all_reservations()
-            if item.status != "cancelada"
+            if item.status not in {"cancelada", "CANCELLED", "FAILED", "REFUNDED", "EXPIRED"}
         ]
 
     def _hour_counts(self) -> Counter:
@@ -239,8 +239,11 @@ class AnalyticsService:
         reservations = self._reservations()
         total_reservations = len(reservations)
         total_revenue = self.total_revenue()
-        confirmed_revenue = self.total_revenue("confirmada")
+        confirmed_statuses = {"confirmada", "PAID"}
+        pending_statuses = {"pendiente", "PENDING_PAYMENT", "PARTIAL_PAYMENT"}
+        confirmed_revenue = round(sum(float(item.total or 0.0) for item in reservations if item.status in confirmed_statuses), 2)
         pending_revenue = round(total_revenue - confirmed_revenue, 2)
+        paid_reservations = [item for item in reservations if item.status == "PAID"]
         today = date.today()
         week_start = today - timedelta(days=today.weekday())
         week_end = week_start + timedelta(days=6)
@@ -293,8 +296,15 @@ class AnalyticsService:
             "pending_revenue": pending_revenue,
             "revenue_today": round(sum(float(item.total or 0.0) for item in today_reservations), 2),
             "revenue_week": round(sum(float(item.total or 0.0) for item in week_reservations), 2),
-            "confirmed_reservations": len([item for item in reservations if item.status == "confirmada"]),
-            "pending_reservations": len([item for item in reservations if item.status == "pendiente"]),
+            "confirmed_reservations": len([item for item in reservations if item.status in confirmed_statuses]),
+            "pending_reservations": len([item for item in reservations if item.status in pending_statuses]),
+            "paid_reservations": len(paid_reservations),
+            "pending_payments": len([item for item in reservations if item.status in {"PENDING_PAYMENT", "PARTIAL_PAYMENT"}]),
+            "failed_payments": len([item for item in reservations if item.status == "FAILED"]),
+            "conversion_rate": round((len(paid_reservations) / total_reservations) * 100, 2) if total_reservations else 0.0,
+            "most_profitable_court": top_court,
+            "average_ticket": round(sum(float(item.total or 0.0) for item in paid_reservations) / len(paid_reservations), 2) if paid_reservations else 0.0,
+            "peak_payment_hours": [],
             "top_court": top_court,
             "most_requested_hour": peak_hour,
             "least_requested_hour": self.least_requested_hour(),

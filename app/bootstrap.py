@@ -12,6 +12,7 @@ from app.services import (
     CourtCatalogService,
     DatabaseService,
     ExportService,
+    PaymentApiService,
     PricingService,
     ReservationApiService,
     ReservationService,
@@ -47,6 +48,7 @@ def build_services(base_dir: str | None = None) -> dict:
         api_client.set_access_token(stored_session["access_token"])
 
     auth_api_service = AuthApiService(api_client)
+    payment_api_service = PaymentApiService(api_client)
     sync_mode = "local"
     api_available = api_client.ping()
 
@@ -73,6 +75,7 @@ def build_services(base_dir: str | None = None) -> dict:
     return {
         "api_client": api_client,
         "auth_api_service": auth_api_service,
+        "payment_api_service": payment_api_service,
         "court_service": court_service,
         "database_service": database_service,
         "session_service": session_service,

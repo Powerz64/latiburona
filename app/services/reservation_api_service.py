@@ -51,6 +51,10 @@ class ReservationApiService:
             total=float(payload.get("total", 0.0) or 0.0),
             status=payload.get("estado", "pendiente"),
             created_at=payload.get("created_at"),
+            payment_status=payload.get("payment_status"),
+            payment_url=payload.get("payment_url"),
+            payment_transaction_id=payload.get("payment_transaction_id"),
+            payment_expires_at=payload.get("payment_expires_at"),
         )
 
     def _payload_to_range(self, payload: dict) -> dict:

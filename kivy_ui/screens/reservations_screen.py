@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import unicodedata
+import webbrowser
+from datetime import datetime, timezone
 
 from kivy.app import App
 from kivy.metrics import dp
@@ -82,6 +84,28 @@ def _display_schedule_label(value: str) -> str:
     return "Mañana" if str(value or "").strip() == "Manana" else value
 
 
+PAYMENT_STATUS_LABELS = {
+    "pending": "Pago pendiente",
+    "paid": "Pagada",
+    "failed": "Pago fallido",
+    "refunded": "Reembolsada",
+    "cancelled": "Pago cancelado",
+}
+
+RESERVATION_STATUS_LABELS = {
+    "pendiente": "Pendiente",
+    "confirmada": "Confirmada",
+    "cancelada": "Cancelada",
+    "PENDING_PAYMENT": "Pago pendiente",
+    "PARTIAL_PAYMENT": "Pago parcial",
+    "PAID": "Pagada",
+    "FAILED": "Fallida",
+    "CANCELLED": "Cancelada",
+    "REFUNDED": "Reembolsada",
+    "EXPIRED": "Expirada",
+}
+
+
 class ReservationsScreen(ServiceScreen):
     service_options = ListProperty(FIELD_NAMES)
     start_time_options = ListProperty(TIME_OPTIONS)
@@ -146,7 +170,7 @@ class ReservationsScreen(ServiceScreen):
         service_options = list(FIELD_NAMES)
         reservations = self.get_service("reservation_service").get_all_reservations()
         pricing_service = self.get_service("pricing_service")
-        confirmed_count = len([item for item in reservations if item.status == "confirmada"])
+        confirmed_count = len([item for item in reservations if item.status in {"confirmada", "PAID"}])
 
         reservations_payload = []
         for reservation in reservations:
@@ -169,6 +193,8 @@ class ReservationsScreen(ServiceScreen):
                 reservation.schedule,
                 reservation.people_count,
             )
+            payment_status = str(reservation.payment_status or "").strip().lower()
+            payment_tone = self._payment_tone(payment_status, reservation.status)
             reservations_payload.append(
                 {
                     "reservation_id": reservation.id or 0,
@@ -178,6 +204,7 @@ class ReservationsScreen(ServiceScreen):
                         "service_type": reservation.service_type,
                         "address": reservation.address,
                         "status": reservation.status,
+                        "payment_status": payment_status,
                     },
                     "client_name": reservation.client_name,
                     "service_type": field_name,
@@ -187,14 +214,17 @@ class ReservationsScreen(ServiceScreen):
                     ),
                     "people_text": f"{reservation.people_count} personas",
                     "schedule_text": _display_schedule_label(reservation.schedule),
-                    "status_text": reservation.status.title(),
-                    "status_tone": "success" if reservation.status == "confirmada" else "warning",
+                    "status_text": RESERVATION_STATUS_LABELS.get(reservation.status, reservation.status.title()),
+                    "status_tone": "success" if reservation.status in {"confirmada", "PAID"} else "danger" if reservation.status in {"FAILED", "CANCELLED", "REFUNDED", "EXPIRED", "cancelada"} else "warning",
+                    "payment_status_text": PAYMENT_STATUS_LABELS.get(payment_status, "Pago por confirmar"),
+                    "payment_tone": payment_tone,
+                    "expiration_text": self._expiration_text(reservation.payment_expires_at, reservation.status),
                     "promotion_text": promotions,
                     "discount_text": discount_text,
                     "promo_label_text": promo_label,
                     "match_badge_text": match_badge,
                     "total_text": format_currency(reservation.total),
-                    "is_confirmed": reservation.status == "confirmada",
+                    "is_confirmed": reservation.status in {"confirmada", "PAID"},
                     "show_management_actions": can_manage_actions,
                 }
             )
@@ -355,6 +385,10 @@ class ReservationsScreen(ServiceScreen):
         return "Partido operativo: tarifa estandar"
 
     def _match_badge_for(self, status: str, schedule: str, people_count: int) -> str:
+        if str(status or "").strip() == "PAID":
+            return "Partido pagado"
+        if str(status or "").strip() == "PENDING_PAYMENT":
+            return "Checkout activo"
         if int(people_count or 0) >= 8:
             return "Partido destacado"
         if str(schedule or "").strip().lower() == "noche":
@@ -362,6 +396,31 @@ class ReservationsScreen(ServiceScreen):
         if str(status or "").strip().lower() == "confirmada":
             return "Partido premium"
         return "Partido en vivo"
+
+    def _payment_tone(self, payment_status: str, reservation_status: str) -> str:
+        if payment_status == "paid" or reservation_status == "PAID":
+            return "success"
+        if payment_status in {"failed", "cancelled", "refunded"} or reservation_status in {"FAILED", "CANCELLED", "REFUNDED", "EXPIRED"}:
+            return "danger"
+        return "warning"
+
+    def _expiration_text(self, expires_at: str | None, reservation_status: str) -> str:
+        if reservation_status == "EXPIRED":
+            return "Reserva expirada"
+        if reservation_status == "PAID":
+            return "Cupo bloqueado por pago"
+        if not expires_at:
+            return ""
+        try:
+            normalized = str(expires_at).replace("Z", "+00:00")
+            expiration = datetime.fromisoformat(normalized)
+            if expiration.tzinfo is not None:
+                minutes = max(0, round((expiration - datetime.now(timezone.utc)).total_seconds() / 60))
+            else:
+                minutes = max(0, round((expiration - datetime.now()).total_seconds() / 60))
+        except ValueError:
+            return "Checkout con tiempo limitado"
+        return f"Expira en {minutes} min" if minutes else "Expirando ahora"
 
     def _set_save_feedback(self, message: str, tone: str = "neutral") -> None:
         self.save_feedback_text = message
@@ -422,6 +481,32 @@ class ReservationsScreen(ServiceScreen):
             self.notify("Reserva", "No se encontro la reserva seleccionada.", tone="warning")
             return
         self.request_delete_reservation(reservation_id)
+
+    def on_pay(self, reservation) -> None:
+        reservation_id = self._extract_reservation_id(reservation)
+        if not reservation_id:
+            self.notify("Pago", "No se encontro la reserva seleccionada.", tone="warning")
+            return
+        self.set_status("Creando checkout de pago...")
+        self.run_in_background(
+            "reservation_payment",
+            lambda: self.get_service("payment_api_service").create_payment(reservation_id),
+            self._handle_payment_success,
+            self._handle_payment_error,
+        )
+
+    def _handle_payment_success(self, payload: dict) -> None:
+        payment_url = str(payload.get("payment_url") or "").strip()
+        if payment_url:
+            webbrowser.open(payment_url)
+            self.notify("Checkout listo", "Abrimos el enlace seguro de Mercado Pago.", tone="success")
+        else:
+            self.notify("Pago pendiente", "La reserva quedo pendiente de pago.", tone="warning")
+        App.get_running_app().refresh_screens(["dashboard", "reservations", "calendar", "reports"])
+
+    def _handle_payment_error(self, error: Exception) -> None:
+        self.notify("Pago", "No fue posible crear el checkout de pago.", tone="danger")
+        self.set_status(f"Error al crear pago: {error}")
 
     def _request_availability_refresh(self, *, show_loading: bool = True) -> None:
         if not self.ids:

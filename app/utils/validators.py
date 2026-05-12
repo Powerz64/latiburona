@@ -63,9 +63,21 @@ def validate_reservation_input(payload: dict) -> dict:
     if len(address) < 5:
         raise ValidationError("La direccion debe ser mas descriptiva.")
 
-    status = normalize_text(payload.get("status", "pendiente")).lower() or "pendiente"
-    if status not in {"pendiente", "confirmada", "cancelada"}:
-        raise ValidationError("El estado debe ser pendiente, confirmada o cancelada.")
+    status_raw = normalize_text(payload.get("status", "pendiente")) or "pendiente"
+    status = status_raw.upper() if "_" in status_raw else status_raw.lower()
+    if status not in {
+        "pendiente",
+        "confirmada",
+        "cancelada",
+        "PENDING_PAYMENT",
+        "PARTIAL_PAYMENT",
+        "PAID",
+        "FAILED",
+        "CANCELLED",
+        "REFUNDED",
+        "EXPIRED",
+    }:
+        raise ValidationError("El estado de la reserva no es valido.")
 
     return {
         "client_name": client_name,

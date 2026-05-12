@@ -6,8 +6,9 @@ from datetime import date, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from app.backend.models import Reserva, User
+from app.backend.models import PaymentTransaction, Reserva, User
 from app.backend.services.auth_service import user_can_manage_global
+from app.backend.services.reservation_service_api import CONFIRMED_RESERVATION_STATES, PENDING_RESERVATION_STATES
 from app.utils.constants import SERVICE_TYPES, TIME_OPTIONS
 from app.utils.time_slots import hour_slots_between
 
@@ -32,6 +33,12 @@ class AnalyticsServiceAPI:
         )
         if not include_cancelled:
             query = query.where(Reserva.estado != "cancelada")
+        if not user_can_manage_global(self.current_user):
+            query = query.where(Reserva.user_id == self.current_user.id)
+        return list(self.db.scalars(query).all())
+
+    def _payment_transactions(self) -> list[PaymentTransaction]:
+        query = select(PaymentTransaction).join(Reserva, PaymentTransaction.reservation_id == Reserva.id)
         if not user_can_manage_global(self.current_user):
             query = query.where(Reserva.user_id == self.current_user.id)
         return list(self.db.scalars(query).all())
@@ -98,8 +105,8 @@ class AnalyticsServiceAPI:
     def status_breakdown(self) -> dict:
         counter = Counter(item.estado for item in self._reservations(include_cancelled=True))
         return {
-            "confirmed": counter.get("confirmada", 0),
-            "pending": counter.get("pendiente", 0),
+            "confirmed": sum(counter.get(status, 0) for status in CONFIRMED_RESERVATION_STATES),
+            "pending": sum(counter.get(status, 0) for status in PENDING_RESERVATION_STATES),
             "cancelled": counter.get("cancelada", 0),
             "items": [{"status": key, "reservations": counter[key]} for key in sorted(counter)],
         }
@@ -133,8 +140,8 @@ class AnalyticsServiceAPI:
             "start_date": start.isoformat(),
             "end_date": end.isoformat(),
             "reservations": len(reservas),
-            "confirmed": status_counts.get("confirmada", 0),
-            "pending": status_counts.get("pendiente", 0),
+            "confirmed": sum(status_counts.get(status, 0) for status in CONFIRMED_RESERVATION_STATES),
+            "pending": sum(status_counts.get(status, 0) for status in PENDING_RESERVATION_STATES),
             "revenue": round(sum(float(item.total or 0.0) for item in reservas), 2),
             "occupied_slots": self._reserved_hours(reservas),
             "peak_hour": top_hour,
@@ -157,6 +164,7 @@ class AnalyticsServiceAPI:
 
     def overview(self) -> dict:
         reservas = self._reservations()
+        payments = self._payment_transactions()
         today = date.today()
         today_reservas = self._in_range(reservas, today, today)
         week = self.weekly_summary()
@@ -168,13 +176,50 @@ class AnalyticsServiceAPI:
         unique_dates = {item.fecha for item in reservas} or {today.isoformat()}
         available_slots = max(len(unique_dates) * len(SERVICE_TYPES) * len(TIME_OPTIONS), len(SERVICE_TYPES) * len(TIME_OPTIONS))
         occupied_slots = self._reserved_hours(reservas)
+        paid_payments = [item for item in payments if item.status == "paid"]
+        pending_payments = [item for item in payments if item.status == "pending"]
+        failed_payments = [item for item in payments if item.status == "failed"]
+        paid_reservation_ids = {item.reservation_id for item in paid_payments}
+        payment_hour_counts: Counter = Counter(item.paid_at.strftime("%H:00") for item in paid_payments if item.paid_at)
+        revenue_by_court: defaultdict[str, float] = defaultdict(float)
+        reservations_by_id = {item.id: item for item in reservas}
+        for payment in paid_payments:
+            reserva = reservations_by_id.get(payment.reservation_id)
+            court_name = reserva.cancha.nombre if reserva and reserva.cancha else "--"
+            revenue_by_court[court_name] += float(payment.amount or 0.0)
+        total_paid_revenue = sum(float(item.amount or 0.0) for item in paid_payments)
+        today_paid_revenue = sum(
+            float(item.amount or 0.0)
+            for item in paid_payments
+            if item.paid_at and item.paid_at.date() == today
+        )
+        week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=6)
+        week_paid_revenue = sum(
+            float(item.amount or 0.0)
+            for item in paid_payments
+            if item.paid_at and week_start <= item.paid_at.date() <= week_end
+        )
         return {
             "revenue": round(sum(float(item.total or 0.0) for item in reservas), 2),
             "revenue_today": round(sum(float(item.total or 0.0) for item in today_reservas), 2),
             "revenue_week": week["revenue"],
+            "paid_revenue": round(total_paid_revenue, 2),
+            "paid_revenue_today": round(today_paid_revenue, 2),
+            "paid_revenue_week": round(week_paid_revenue, 2),
             "reservations": len(reservas),
             "confirmed_reservations": status["confirmed"],
             "pending_reservations": status["pending"],
+            "paid_reservations": len(paid_reservation_ids),
+            "pending_payments": len(pending_payments),
+            "failed_payments": len(failed_payments),
+            "conversion_rate": round((len(paid_reservation_ids) / len(reservas)) * 100, 2) if reservas else 0.0,
+            "most_profitable_court": max(revenue_by_court, key=revenue_by_court.get) if revenue_by_court else "--",
+            "average_ticket": round(total_paid_revenue / len(paid_payments), 2) if paid_payments else 0.0,
+            "peak_payment_hours": [
+                {"hour": hour, "payments": payment_hour_counts[hour]}
+                for hour in sorted(payment_hour_counts, key=lambda item: (-payment_hour_counts[item], item))
+            ],
             "occupancy": round((occupied_slots / available_slots) * 100, 2) if available_slots else 0.0,
             "top_court": top_courts[0]["court"] if top_courts else "--",
             "peak_hour": peak_hour,

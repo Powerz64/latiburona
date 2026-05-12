@@ -102,9 +102,15 @@ class DashboardScreen(BaseScreen):
         reservations = int(payload.get("total_reservations", 0) or 0)
         confirmed_reservations = int(payload.get("confirmed_reservations", 0) or 0)
         pending_reservations = int(payload.get("pending_reservations", 0) or 0)
+        paid_reservations = int(payload.get("paid_reservations", 0) or 0)
+        pending_payments = int(payload.get("pending_payments", 0) or 0)
+        failed_payments = int(payload.get("failed_payments", 0) or 0)
+        conversion_rate = float(payload.get("conversion_rate", 0) or 0)
+        average_ticket = float(payload.get("average_ticket", 0) or 0)
         occupancy = float(payload.get("occupancy_rate", 0) or 0)
         peak_hour = str(payload.get("most_requested_hour") or "--")
         top_court = str(payload.get("top_court") or "--")
+        most_profitable_court = str(payload.get("most_profitable_court") or top_court or "--")
         reservations_by_hour = dict(payload.get("reservations_by_hour") or {})
         insights = list(payload.get("insights") or [])
         recommendations = list(payload.get("recommendations") or [])
@@ -167,7 +173,18 @@ class DashboardScreen(BaseScreen):
             }
         )
         self._apply_live_court_cards(live_courts)
-        self._apply_mini_widgets(reservations, occupancy, peak_hour, live_courts)
+        self._apply_mini_widgets(
+            reservations,
+            occupancy,
+            peak_hour,
+            live_courts,
+            paid_reservations=paid_reservations,
+            pending_payments=pending_payments,
+            failed_payments=failed_payments,
+            conversion_rate=conversion_rate,
+            average_ticket=average_ticket,
+            most_profitable_court=most_profitable_court,
+        )
         self.ids.insights_card.apply_data(
             "Lectura deportiva",
             "\n".join(f"- {item}" for item in insights[:3]) or "- Sin insights disponibles.",
@@ -267,6 +284,13 @@ class DashboardScreen(BaseScreen):
         occupancy: float,
         peak_hour: str,
         live_courts: list[dict],
+        *,
+        paid_reservations: int = 0,
+        pending_payments: int = 0,
+        failed_payments: int = 0,
+        conversion_rate: float = 0.0,
+        average_ticket: float = 0.0,
+        most_profitable_court: str = "--",
     ) -> None:
         top_court = max(live_courts, key=lambda item: item.get("occupancy_ratio", 0), default={})
         featured = live_courts[0] if live_courts else {}
@@ -299,29 +323,29 @@ class DashboardScreen(BaseScreen):
         )
         self.ids.mini_tournament_card.set_data(
             {
-                "title": "Próximo torneo",
-                "value": "Liga 7v7",
-                "status": "Siguiente bloque",
-                "tone": "primary",
-                "caption": "Ventana sugerida para calendario.",
+                "title": "Pagos pendientes",
+                "value": str(pending_payments),
+                "status": "Checkout",
+                "tone": "warning" if pending_payments else "success",
+                "caption": f"Fallidos: {failed_payments} | Conversion {conversion_rate:.1f}%",
             }
         )
         self.ids.mini_average_card.set_data(
             {
-                "title": "Ocupación promedio",
-                "value": f"{occupancy:.1f}%",
-                "status": "Red de canchas",
-                "tone": "success" if occupancy >= 65 else "warning",
-                "caption": "Promedio operativo de sedes.",
+                "title": "Ticket promedio",
+                "value": format_currency(average_ticket),
+                "status": f"{paid_reservations} pagadas",
+                "tone": "success" if paid_reservations else "warning",
+                "caption": "Promedio de pagos aprobados.",
             }
         )
         self.ids.mini_featured_card.set_data(
             {
-                "title": "Partido destacado",
-                "value": featured.get("field_name", "--").replace(" Barranquilla", ""),
-                "status": "Cupo prime",
+                "title": "Cancha mas rentable",
+                "value": most_profitable_court.replace(" Barranquilla", ""),
+                "status": "Ingreso pago",
                 "tone": featured.get("tone", "success"),
-                "caption": featured.get("promotion", "Promoción destacada."),
+                "caption": "Ordenada por pagos confirmados.",
             }
         )
 

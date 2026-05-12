@@ -17,6 +17,9 @@ from app.utils.validators import ValidationError, validate_reservation_input
 BUFFER_MINUTES = 10
 OPERATING_START = "08:00"
 OPERATING_END = "22:00"
+RELEASED_RESERVATION_STATES = {"cancelada", "CANCELLED", "FAILED", "REFUNDED", "EXPIRED"}
+CONFIRMED_RESERVATION_STATES = {"confirmada", "PAID"}
+PENDING_RESERVATION_STATES = {"pendiente", "PENDING_PAYMENT", "PARTIAL_PAYMENT"}
 
 
 @dataclass
@@ -43,7 +46,7 @@ class ReservationServiceAPI:
         if fecha is not None:
             query = query.where(Reserva.fecha == fecha)
         if not include_cancelled:
-            query = query.where(Reserva.estado != "cancelada")
+            query = query.where(~Reserva.estado.in_(RELEASED_RESERVATION_STATES))
         if self.current_user is not None and not user_can_manage_global(self.current_user):
             query = query.where(Reserva.user_id == self.current_user.id)
         return query
@@ -55,7 +58,7 @@ class ReservationServiceAPI:
             .where(
                 Reserva.cancha_id == cancha_id,
                 Reserva.fecha == fecha,
-                Reserva.estado != "cancelada",
+                ~Reserva.estado.in_(RELEASED_RESERVATION_STATES),
             )
             .order_by(Reserva.hora_inicio.asc())
         )

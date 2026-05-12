@@ -1061,7 +1061,7 @@
 <ReservationRow>:
     size_hint_y: None
     orientation: "vertical"
-    height: dp(220)
+    height: dp(236)
     padding: dp(14)
     spacing: dp(9)
     background_color: hx(app.theme_state.card_alt)
@@ -1209,7 +1209,7 @@
                 size: self.size
     BoxLayout:
         size_hint_y: None
-        height: dp(32)
+        height: dp(38)
         spacing: dp(12)
         Label:
             text: root.promo_label_text if root.promo_label_text else root.promotion_text
@@ -1226,6 +1226,22 @@
             text: root.match_badge_text
             background_color: hx(app.theme_state.primary_soft)
             border_color: hx(app.theme_state.primary)
+        InfoPill:
+            size_hint_x: None
+            width: dp(150)
+            text: root.payment_status_text
+            background_color: hx(app.theme_state.success_soft) if root.payment_tone == "success" else hx(app.theme_state.danger_soft) if root.payment_tone == "danger" else hx(app.theme_state.warning_soft)
+            border_color: hx(app.theme_state.success) if root.payment_tone == "success" else hx(app.theme_state.danger) if root.payment_tone == "danger" else hx(app.theme_state.warning)
+    Label:
+        text: root.expiration_text
+        opacity: 1 if root.expiration_text else 0
+        color: hx(app.theme_state.warning) if root.payment_tone == "warning" else hx(app.theme_state.text_muted)
+        font_size: "11sp"
+        size_hint_y: None
+        height: dp(14) if root.expiration_text else 0
+        text_size: self.width, self.height
+        halign: "left"
+        valign: "middle"
     BoxLayout:
         size_hint_y: None
         height: dp(44)
@@ -1260,10 +1276,10 @@
             size_hint_x: 0 if root.show_management_actions else 1
             spacing: dp(14)
             opacity: 0 if root.show_management_actions else 1
-            SecondaryButton:
-                text: "Editar"
+            SuccessButton:
+                text: "Pagar reserva"
                 disabled: root.show_management_actions
-                on_release: app.get_screen("reservations").on_edit(root.data)
+                on_release: app.get_screen("reservations").on_pay(root.data)
 
 <TournamentRow>:
     size_hint_y: None

@@ -11,6 +11,8 @@ from app.backend.routers.analytics import router as analytics_router
 from app.backend.routers.auth import router as auth_router
 from app.backend.routers.canchas import router as canchas_router
 from app.backend.routers.dashboard import router as dashboard_router
+from app.backend.routers.payments import router as payments_router
+from app.backend.routers.public import router as public_router
 from app.backend.routers.reservations import router as reservations_router
 from app.backend.routers.tournaments import router as tournaments_router
 from app.backend.services.auth_service import ensure_default_admin_user
@@ -37,6 +39,8 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(analytics_router)
 app.include_router(dashboard_router)
+app.include_router(payments_router)
+app.include_router(public_router)
 app.include_router(reservations_router)
 app.include_router(canchas_router)
 app.include_router(tournaments_router)

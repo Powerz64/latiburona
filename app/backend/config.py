@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from dataclasses import dataclass
 
 from app.models import AppSettings
 from app.utils.constants import DEFAULT_SETTINGS
@@ -77,6 +78,27 @@ def normalize_database_url(database_url: str | None) -> str:
 
 def database_backend_name(database_url: str) -> str:
     return "sqlite" if database_url.startswith("sqlite") else "postgresql"
+
+
+@dataclass(frozen=True)
+class PaymentSettings:
+    public_key: str
+    access_token: str
+    webhook_secret: str
+    provider: str
+    mode: str
+    timeout_minutes: int
+
+
+def load_payment_settings() -> PaymentSettings:
+    return PaymentSettings(
+        public_key=os.getenv("MERCADOPAGO_PUBLIC_KEY", "").strip(),
+        access_token=os.getenv("MERCADOPAGO_ACCESS_TOKEN", "").strip(),
+        webhook_secret=os.getenv("MERCADOPAGO_WEBHOOK_SECRET", "").strip(),
+        provider=os.getenv("PAYMENT_PROVIDER", "manual").strip().lower() or "manual",
+        mode=os.getenv("PAYMENT_MODE", "test").strip().lower() or "test",
+        timeout_minutes=max(5, _get_env_int("RESERVATION_PAYMENT_TIMEOUT_MINUTES", 20)),
+    )
 
 
 def load_backend_pricing_settings() -> AppSettings:

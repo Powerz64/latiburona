@@ -43,8 +43,80 @@ class ReservaOut(ReservaBase):
     user_id: int | None = None
     cancha_nombre: str
     created_at: datetime
+    payment_status: str | None = None
+    payment_url: str | None = None
+    payment_transaction_id: int | None = None
+    payment_expires_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PaymentCreateRequest(BaseModel):
+    reservation_id: int
+
+
+class PaymentCreateResponse(BaseModel):
+    reservation_id: int
+    payment_transaction_id: int
+    status: str
+    amount: float
+    currency: str
+    payment_url: str
+    expires_at: datetime | None = None
+
+
+class PaymentStatusResponse(BaseModel):
+    reservation_id: int
+    reservation_status: str
+    payment_status: str
+    amount: float = 0.0
+    currency: str = "COP"
+    payment_url: str = ""
+    expires_at: datetime | None = None
+    paid_at: datetime | None = None
+
+
+class PaymentRefundRequest(BaseModel):
+    reservation_id: int
+    reason: str = Field(default="", max_length=300)
+
+
+class PublicReserveRequest(ReservaBase):
+    email: EmailStr | None = None
+
+
+class PublicReserveResponse(BaseModel):
+    reservation_id: int
+    token: str
+    reservation_status: str
+    payment_status: str
+    amount: float
+    currency: str
+    payment_url: str
+    expires_at: datetime
+
+
+class PublicAvailabilityResponse(BaseModel):
+    cancha_id: int
+    fecha: str
+    slots: list[dict]
+    available_count: int
+    occupied_count: int
+    partial_count: int
+
+
+class PublicReservationStatusResponse(BaseModel):
+    reservation_id: int
+    reservation_status: str
+    payment_status: str
+    cancha_nombre: str
+    fecha: str
+    hora_inicio: str
+    hora_fin: str
+    amount: float
+    currency: str
+    payment_url: str
+    expires_at: datetime | None = None
 
 
 class AlternativeRange(BaseModel):

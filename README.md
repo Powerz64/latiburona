@@ -99,6 +99,13 @@ El backend ahora soporta:
 - `GET /analytics/weekly-summary`
 - `GET /analytics/monthly-summary`
 - `GET /dashboard/summary`
+- `POST /payments/create`
+- `POST /payments/webhook`
+- `GET /payments/status/{reservation_id}`
+- `POST /payments/refund`
+- `POST /public/reserve`
+- `GET /public/availability`
+- `GET /public/reservation/{token}`
 - `GET|POST|PUT|DELETE /reservas`
 - `GET|POST|PUT|DELETE /torneos`
 
@@ -127,19 +134,32 @@ Notas de migracion:
 
 ### v1.2 - Pagos y reservas online
 
-Plan aprobado, no implementado todavia para no mezclar cambios de negocio con v1.1:
+Implementado como base segura para Checkout Pro y reservas online:
 
-- Agregar modelo `payments` con estado `pending`, `paid`, `failed`, `refunded`, `cancelled`.
-- Agregar estado de pago a reserva: `unpaid`, `partially_paid`, `paid`, `cancelled`.
-- Crear `PaymentService` con proveedor manual/mock primero.
-- Exponer controles admin para marcar pago, pago parcial, cancelacion y reembolso.
-- Mostrar al cliente precio, estado de pago e instrucciones.
-- Dejar adaptadores preparados para Wompi, Mercado Pago y Stripe sin acoplarlos a Kivy.
+- Nuevas tablas persistentes: `payment_transactions`, `reservation_public_links`, `reservation_expirations`.
+- Estados de reserva soportados: `PENDING_PAYMENT`, `PARTIAL_PAYMENT`, `PAID`, `FAILED`, `CANCELLED`, `REFUNDED`, `EXPIRED`.
+- `PaymentServiceAPI` crea preferencias server-side y nunca envia credenciales al cliente.
+- `PAYMENT_PROVIDER=mercadopago` usa Checkout Pro; sin proveedor remoto se mantiene modo manual para QA local.
+- Webhook idempotente actualiza transaccion y reserva; `approved` convierte la reserva a `PAID`.
+- Reservas online: disponibilidad publica, reserva publica con token y vista publica de estado.
+- Expiracion automatica libera reservas impagas al vencer `RESERVATION_PAYMENT_TIMEOUT_MINUTES`.
+- Prevencion de doble reserva conserva validacion de solapes con buffer y bloquea reservas pendientes de pago.
+- Analytics agrega pagos aprobados, pendientes, fallidos, conversion, ticket promedio, cancha mas rentable y horas pico de pago.
+- Kivy muestra badges de pago, alertas financieras, checkout para cliente y cuenta regresiva de expiracion.
+
+Variables de entorno:
+
+- `MERCADOPAGO_PUBLIC_KEY`
+- `MERCADOPAGO_ACCESS_TOKEN`
+- `MERCADOPAGO_WEBHOOK_SECRET` opcional
+- `PAYMENT_PROVIDER`
+- `PAYMENT_MODE`
+- `RESERVATION_PAYMENT_TIMEOUT_MINUTES`
 
 Rollback previsto:
 
-- Mantener pagos como tabla independiente y no bloquear la creacion de reservas existentes.
-- Feature flag recomendado: `LATIBURONA_PAYMENTS_ENABLED`.
+- Volver al commit anterior deja las tablas de pago sin uso y conserva reservas existentes.
+- Las reservas con estados v1.2 pueden revertirse operacionalmente a `pendiente`, `confirmada` o `cancelada` si se requiere compatibilidad estricta con v1.1.
 
 ### v2.0 - Multi-sede, movil y tiempo real
 

@@ -6,6 +6,7 @@ from .auth_api_service import AuthApiNetworkError, AuthApiService, AuthApiServic
 from .court_service import CourtApiService, CourtCatalogService
 from .database_service import DatabaseService
 from .export_service import ExportService
+from .payment_api_service import PaymentApiService
 from .pricing_service import PricingService
 from .reservation_api_service import ReservationApiService
 from .reservation_service import ReservationService
@@ -26,6 +27,7 @@ __all__ = [
     "CourtCatalogService",
     "DatabaseService",
     "ExportService",
+    "PaymentApiService",
     "PricingService",
     "ReservationApiService",
     "ReservationService",

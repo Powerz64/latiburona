@@ -22,6 +22,10 @@ class Reservation:
     total: float
     status: str = "pendiente"
     created_at: Optional[str] = None
+    payment_status: Optional[str] = None
+    payment_url: Optional[str] = None
+    payment_transaction_id: Optional[int] = None
+    payment_expires_at: Optional[str] = None
 
     @property
     def ticket_average(self) -> float:

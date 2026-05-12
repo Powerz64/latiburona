@@ -600,9 +600,25 @@ class ReservationCourtCard(ButtonBehavior, BaseCard):
         self.bind(tone=lambda *_args: self._apply_visual_state())
         self._apply_visual_state()
 
-    def on_release(self) -> None:
+    def on_release(self, *_args) -> None:
         if self.on_select:
             self.on_select(self.field_name)
+
+    def on_touch_down(self, touch):
+        if self.disabled or not self.collide_point(*touch.pos):
+            return super().on_touch_down(touch)
+        touch.grab(self)
+        self.state = "down"
+        self.is_hovered = True
+        return True
+
+    def on_touch_up(self, touch):
+        if touch.grab_current is not self:
+            return super().on_touch_up(touch)
+        touch.ungrab(self)
+        self.state = "normal"
+        self.on_release()
+        return True
 
     def set_loading(self, payload: dict | None = None) -> None:
         self.is_loading = True

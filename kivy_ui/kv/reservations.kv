@@ -177,9 +177,21 @@
                                         text_size: self.size
                                         halign: "left"
                                         valign: "middle"
-                                    AppTextInput:
-                                        id: date_input
-                                        hint_text: "2026-05-04"
+                                    BoxLayout:
+                                        size_hint_y: None
+                                        height: dp(50)
+                                        spacing: dp(8)
+                                        AppTextInput:
+                                            id: date_input
+                                            hint_text: "AAAA-MM-DD"
+                                            readonly: True
+                                            on_touch_down:
+                                                root.open_date_picker() if self.collide_point(*args[1].pos) else None
+                                        PrimaryButton:
+                                            text: "Calendario"
+                                            size_hint_x: None
+                                            width: dp(132)
+                                            on_release: root.open_date_picker()
 
                                 BoxLayout:
                                     orientation: "vertical"
@@ -457,7 +469,7 @@
                                     size_hint_y: None
                                     height: self.minimum_height
                                     spacing: dp(10)
-                                    row_default_height: dp(236)
+                                    row_default_height: dp(218)
                                     row_force_default: True
 
                             CardBox:

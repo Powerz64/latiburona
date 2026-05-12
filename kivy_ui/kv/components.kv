@@ -850,7 +850,7 @@
 
 <ReservationCourtCard>:
     size_hint_y: None
-    height: dp(236)
+    height: dp(218)
     padding: dp(0)
     spacing: dp(0)
     radius: dp(18)
@@ -889,7 +889,7 @@
                     bold: True
                     size_hint: None, None
                     size: min(self.texture_size[0] + dp(22), dp(142)), dp(28)
-                    pos: self.parent.right - self.width - dp(10), self.parent.top - dp(38)
+                    pos: self.parent.right - self.width - dp(10), self.parent.top - dp(36)
                     text_size: self.width - dp(12), self.height
                     halign: "center"
                     valign: "middle"
@@ -904,8 +904,8 @@
                             radius: [dp(14)]
             BoxLayout:
                 orientation: "vertical"
-                padding: dp(12), dp(10)
-                spacing: dp(5)
+                padding: dp(12), dp(8)
+                spacing: dp(4)
                 Label:
                     text: root.field_name
                     color: hx(app.theme_state.text_primary)
@@ -981,7 +981,7 @@
                     cols: 2
                     spacing: dp(6)
                     size_hint_y: None
-                    height: dp(44)
+                    height: dp(40)
                     Label:
                         text: root.court_type_text
                         color: hx(app.theme_state.text_secondary)

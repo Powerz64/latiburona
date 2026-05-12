@@ -2,20 +2,26 @@ from __future__ import annotations
 
 import unicodedata
 import webbrowser
-from datetime import datetime, timezone
+from calendar import monthrange
+from datetime import date, datetime, timedelta, timezone
 
 from kivy.app import App
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty, ListProperty, NumericProperty, StringProperty
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.label import Label
+from kivy.uix.popup import Popup
 
 from app.services import ReservationConflictValidationError
 from app.utils.constants import END_TIME_OPTIONS, SERVICE_TYPES, TIME_OPTIONS
 from app.utils.formatters import format_currency, format_date, format_reservation_window
 from app.utils.validators import ValidationError
 from kivy_ui.components.cards import ReservationCourtCard
+from kivy_ui.components.buttons import PrimaryButton, SecondaryButton
 from kivy_ui.components.rows import ReservationRow
 from kivy_ui.screens.base_screen import ServiceScreen
-from kivy_ui.theme import FIELD_IMAGES
+from kivy_ui.theme import FIELD_IMAGES, UI_FONT, active_theme_hex, rgba
 
 
 FIELDS = {
@@ -159,6 +165,146 @@ RESERVATION_STATUS_LABELS = {
     "EXPIRED": "Expirada",
 }
 
+WEEKDAY_SHORT_LABELS = ["L", "M", "M", "J", "V", "S", "D"]
+MONTH_LABELS = [
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+]
+
+
+class ReservationDatePicker(Popup):
+    def __init__(self, selected_date: str, on_select, **kwargs) -> None:
+        theme = active_theme_hex()
+        self.on_select = on_select
+        self.current_month = self._parse_date(selected_date)
+        super().__init__(
+            title="Seleccionar fecha",
+            title_align="left",
+            title_font=UI_FONT,
+            title_color=rgba(theme["text_primary"]),
+            separator_color=rgba(theme["primary"]),
+            size_hint=(None, None),
+            size=(dp(430), dp(488)),
+            auto_dismiss=True,
+            **kwargs,
+        )
+        self.background_color = rgba(theme["surface"])
+        self._content = BoxLayout(orientation="vertical", padding=dp(18), spacing=dp(12))
+        self.content = self._content
+        self._render()
+
+    @staticmethod
+    def _parse_date(value: str) -> date:
+        try:
+            return date.fromisoformat(str(value or "").strip())
+        except ValueError:
+            return date.today()
+
+    def _render(self) -> None:
+        theme = active_theme_hex()
+        self._content.clear_widgets()
+        header = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(10))
+        prev_button = SecondaryButton(text="<", size_hint_x=None, width=dp(48))
+        next_button = SecondaryButton(text=">", size_hint_x=None, width=dp(48))
+        month_label = Label(
+            text=f"{MONTH_LABELS[self.current_month.month - 1].capitalize()} {self.current_month.year}",
+            font_name=UI_FONT,
+            color=rgba(theme["text_primary"]),
+            bold=True,
+            font_size="18sp",
+            text_size=(dp(250), dp(44)),
+            halign="center",
+            valign="middle",
+        )
+        prev_button.bind(on_release=lambda *_args: self._shift_month(-1))
+        next_button.bind(on_release=lambda *_args: self._shift_month(1))
+        header.add_widget(prev_button)
+        header.add_widget(month_label)
+        header.add_widget(next_button)
+        self._content.add_widget(header)
+
+        quick = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(8))
+        for label, target in (
+            ("Hoy", date.today()),
+            ("Mañana", date.today() + timedelta(days=1)),
+            ("Fin de semana", self._next_weekend()),
+        ):
+            button = SecondaryButton(text=label)
+            button.bind(on_release=lambda _btn, selected=target: self._select(selected))
+            quick.add_widget(button)
+        self._content.add_widget(quick)
+
+        weekdays = GridLayout(cols=7, size_hint_y=None, height=dp(24), spacing=dp(4))
+        for label in WEEKDAY_SHORT_LABELS:
+            weekdays.add_widget(
+                Label(
+                    text=label,
+                    font_name=UI_FONT,
+                    color=rgba(theme["text_muted"]),
+                    font_size="12sp",
+                    bold=True,
+                    text_size=(dp(44), dp(24)),
+                    halign="center",
+                    valign="middle",
+                )
+            )
+        self._content.add_widget(weekdays)
+
+        days_grid = GridLayout(cols=7, size_hint_y=None, height=dp(252), spacing=dp(6))
+        first_day = self.current_month.replace(day=1)
+        _, days_in_month = monthrange(first_day.year, first_day.month)
+        offset = first_day.weekday()
+        for _ in range(offset):
+            days_grid.add_widget(Label(text=""))
+        for day in range(1, days_in_month + 1):
+            current = first_day.replace(day=day)
+            is_today = current == date.today()
+            button = PrimaryButton(text=str(day)) if is_today else SecondaryButton(text=str(day))
+            button.size_hint_y = None
+            button.height = dp(36)
+            button.bind(on_release=lambda _btn, selected=current: self._select(selected))
+            days_grid.add_widget(button)
+        for _ in range(max(0, 42 - offset - days_in_month)):
+            days_grid.add_widget(Label(text=""))
+        self._content.add_widget(days_grid)
+
+        close_button = SecondaryButton(text="Cerrar", size_hint_y=None, height=dp(42))
+        close_button.bind(on_release=lambda *_args: self.dismiss())
+        self._content.add_widget(close_button)
+
+    @staticmethod
+    def _next_weekend() -> date:
+        today = date.today()
+        days_until_saturday = (5 - today.weekday()) % 7
+        return today + timedelta(days=days_until_saturday)
+
+    def _shift_month(self, direction: int) -> None:
+        month = self.current_month.month + direction
+        year = self.current_month.year
+        if month < 1:
+            month = 12
+            year -= 1
+        elif month > 12:
+            month = 1
+            year += 1
+        self.current_month = self.current_month.replace(year=year, month=month, day=1)
+        self._render()
+
+    def _select(self, selected: date) -> None:
+        self.dismiss()
+        if self.on_select:
+            self.on_select(selected.isoformat())
+
 
 class ReservationsScreen(ServiceScreen):
     service_options = ListProperty(FIELD_NAMES)
@@ -187,21 +333,28 @@ class ReservationsScreen(ServiceScreen):
     live_courts_data = ListProperty([])
 
     def __init__(self, **kwargs) -> None:
+        self._suspend_form_events = True
         super().__init__(**kwargs)
         self._suspend_form_events = False
 
     def on_kv_post(self, *_args) -> None:
-        self.bind(size=self._update_layout)
-        self.ids.date_input.bind(text=lambda *_args: self._handle_form_change())
-        self.ids.service_spinner.bind(text=lambda *_args: self._handle_form_change())
-        self.ids.start_time_spinner.bind(text=lambda *_args: self._handle_start_time_change())
-        self.ids.end_time_spinner.bind(text=lambda *_args: self._handle_form_change())
-        self.ids.people_input.bind(text=lambda *_args: self.update_quote())
-        self._set_service_options(list(FIELD_NAMES))
-        self.on_field_selected(self.ids.service_spinner.text)
-        self._update_layout()
-        self._reset_quote_preview()
-        self._render_live_courts()
+        super().on_kv_post(*_args)
+        self._suspend_form_events = True
+        try:
+            self.bind(size=self._update_layout)
+            self.ids.date_input.bind(text=lambda *_args: self._handle_form_change())
+            self.ids.service_spinner.bind(text=lambda *_args: self._handle_form_change())
+            self.ids.start_time_spinner.bind(text=lambda *_args: self._handle_start_time_change())
+            self.ids.end_time_spinner.bind(text=lambda *_args: self._handle_form_change())
+            self.ids.people_input.bind(text=lambda *_args: self.update_quote())
+            self._set_service_options(list(FIELD_NAMES))
+            self.ids.date_input.text = date.today().isoformat()
+            self.on_field_selected(self.ids.service_spinner.text)
+            self._update_layout()
+            self._reset_quote_preview()
+            self._render_live_courts()
+        finally:
+            self._suspend_form_events = False
 
     def _update_layout(self, *_args) -> None:
         if not self.ids:
@@ -425,7 +578,8 @@ class ReservationsScreen(ServiceScreen):
         for item in cards:
             item = dict(item)
             item["is_selected"] = item["field_name"] == self.selected_court_name
-            card = ReservationCourtCard(on_select=self.select_live_court)
+            card = ReservationCourtCard()
+            card.on_select = self.select_live_court
             card.set_data(item)
             container.add_widget(card)
         selected_meta = FIELD_CARD_META.get(self.selected_court_name, {})
@@ -446,8 +600,19 @@ class ReservationsScreen(ServiceScreen):
             finally:
                 self._suspend_form_events = False
         self._render_live_courts()
-        self._handle_form_change()
+        self.update_quote()
+        self.selected_range_text = f"Cancha seleccionada: {field_name}"
         self.set_status(f"Cancha seleccionada: {field_name}.")
+
+    def open_date_picker(self) -> None:
+        ReservationDatePicker(self.ids.date_input.text if self.ids else "", self.apply_selected_date).open()
+
+    def apply_selected_date(self, selected_date: str) -> None:
+        if not self.ids:
+            return
+        self.ids.date_input.text = selected_date
+        self._handle_form_change()
+        self.set_status(f"Fecha seleccionada: {selected_date}.")
 
     def _payload(self) -> dict:
         field_name = self.ids.service_spinner.text.strip()
@@ -494,7 +659,7 @@ class ReservationsScreen(ServiceScreen):
         self._handle_form_change()
 
     def _handle_form_change(self) -> None:
-        if self._suspend_form_events:
+        if self._suspend_form_events or not hasattr(self, "_background_task_versions"):
             return
         self.update_quote()
         self._request_availability_refresh()
@@ -928,7 +1093,7 @@ class ReservationsScreen(ServiceScreen):
             self.ids.client_name_input.text = ""
             default_service = self.service_options[0] if self.service_options else FIELD_NAMES[0]
             self.ids.service_spinner.text = default_service
-            self.ids.date_input.text = ""
+            self.ids.date_input.text = date.today().isoformat()
             self.ids.start_time_spinner.text = self.start_time_options[0]
             self.end_time_options = [value for value in END_TIME_OPTIONS if value > self.start_time_options[0]]
             self.ids.end_time_spinner.text = self.end_time_options[0]

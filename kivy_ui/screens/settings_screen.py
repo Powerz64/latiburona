@@ -19,6 +19,10 @@ class SettingsScreen(ServiceScreen):
     account_name_text = StringProperty("Sin sesión activa")
     account_email_text = StringProperty("")
     account_role_text = StringProperty("")
+    header_role_badge_text = StringProperty("ADMIN")
+    header_access_text = StringProperty("Control completo")
+    header_theme_text = StringProperty("Modo oscuro")
+    header_sync_text = StringProperty("Sincronizado")
     dark_button_variant = StringProperty("primary")
     light_button_variant = StringProperty("secondary")
     show_pricing_controls = BooleanProperty(True)
@@ -92,6 +96,9 @@ class SettingsScreen(ServiceScreen):
         self.account_name_text = user.get("display_name") or user.get("full_name") or "Sin sesión activa"
         self.account_email_text = user.get("email", "")
         self.account_role_text = "Administrador" if self.show_pricing_controls else "Operador"
+        self.header_role_badge_text = "ADMIN" if self.show_pricing_controls else "OPERADOR"
+        self.header_access_text = "Control completo" if self.show_pricing_controls else "Vista operativa"
+        self.header_sync_text = "Sincronizado"
         self._apply_theme_state(App.get_running_app().theme_mode)
         self.set_status("Configuración del negocio y experiencia visual cargadas.")
 
@@ -112,6 +119,7 @@ class SettingsScreen(ServiceScreen):
 
     def _apply_theme_state(self, mode: str) -> None:
         self.active_theme_text = "Tema activo: Oscuro" if mode == "dark" else "Tema activo: Claro"
+        self.header_theme_text = "Modo oscuro" if mode == "dark" else "Modo claro"
         self.dark_button_variant = "primary" if mode == "dark" else "secondary"
         self.light_button_variant = "primary" if mode == "light" else "secondary"
 

@@ -29,19 +29,13 @@
 
                     CardBox:
                         size_hint_y: None
-                        height: dp(150)
+                        height: dp(166) if root.width < dp(900) else dp(150)
                         padding: dp(24)
                         spacing: dp(10)
                         background_color: hx(app.theme_state.surface_alt)
                         border_color: hx(app.theme_state.primary)
                         shadow_offset: dp(3)
                         canvas.after:
-                            Color:
-                                rgba: hx(app.theme_state.primary)[0], hx(app.theme_state.primary)[1], hx(app.theme_state.primary)[2], 0.08
-                            RoundedRectangle:
-                                pos: self.x + self.width * 0.62, self.y + dp(16)
-                                size: self.width * 0.3, self.height - dp(32)
-                                radius: [dp(28)]
                             Color:
                                 rgba: hx(app.theme_state.success_soft)
                             Line:
@@ -76,7 +70,7 @@
                                 Label:
                                     text: "Configuracion deportiva"
                                     color: hx(app.theme_state.text_primary)
-                                    font_size: "26sp"
+                                    font_size: "24sp" if root.width < dp(900) else "26sp"
                                     bold: True
                                     size_hint_y: None
                                     height: dp(30)
@@ -88,16 +82,86 @@
                                     color: hx(app.theme_state.text_secondary)
                                     font_size: ds.FONT_BODY
                                     size_hint_y: None
-                                    height: dp(18)
+                                    height: 0 if root.width < dp(900) else dp(18)
+                                    opacity: 0 if root.width < dp(900) else 1
                                     text_size: self.width, dp(18)
                                     halign: "left"
                                     valign: "middle"
-                            InfoPill:
+                            BoxLayout:
+                                orientation: "vertical"
                                 size_hint_x: None
-                                width: dp(132)
-                                text: "Consola admin" if root.show_pricing_controls else "Consola operador"
-                                background_color: hx(app.theme_state.primary_soft)
-                                border_color: hx(app.theme_state.primary)
+                                width: dp(390) if root.width >= dp(900) else 0
+                                opacity: 1 if root.width >= dp(900) else 0
+                                spacing: dp(6)
+                                Label:
+                                    text: root.header_role_badge_text
+                                    color: hx(app.theme_state.success)
+                                    font_size: "11sp"
+                                    bold: True
+                                    size_hint_y: None
+                                    height: dp(16)
+                                    text_size: self.width, dp(16)
+                                    halign: "right"
+                                    valign: "middle"
+                                BoxLayout:
+                                    size_hint_y: None
+                                    height: dp(22)
+                                    spacing: dp(8)
+                                    Label:
+                                        text: root.header_theme_text
+                                        color: hx(app.theme_state.text_secondary)
+                                        font_size: ds.FONT_LABEL
+                                        size_hint_x: None
+                                        width: dp(112)
+                                        text_size: self.size
+                                        halign: "right"
+                                        valign: "middle"
+                                    Label:
+                                        text: root.header_sync_text
+                                        color: hx(app.theme_state.primary)
+                                        font_size: ds.FONT_LABEL
+                                        size_hint_x: None
+                                        width: dp(112)
+                                        text_size: self.size
+                                        halign: "right"
+                                        valign: "middle"
+                                    Label:
+                                        text: root.header_access_text
+                                        color: hx(app.theme_state.text_muted)
+                                        font_size: ds.FONT_LABEL
+                                        text_size: self.size
+                                        halign: "right"
+                                        valign: "middle"
+
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(24) if root.width < dp(900) else 0
+                            opacity: 1 if root.width < dp(900) else 0
+                            spacing: dp(10)
+                            Label:
+                                text: root.header_role_badge_text
+                                color: hx(app.theme_state.success)
+                                font_size: "11sp"
+                                bold: True
+                                size_hint_x: None
+                                width: dp(78)
+                                text_size: self.size
+                                halign: "left"
+                                valign: "middle"
+                            Label:
+                                text: root.header_theme_text
+                                color: hx(app.theme_state.text_secondary)
+                                font_size: ds.FONT_LABEL
+                                text_size: self.size
+                                halign: "left"
+                                valign: "middle"
+                            Label:
+                                text: root.header_sync_text
+                                color: hx(app.theme_state.primary)
+                                font_size: ds.FONT_LABEL
+                                text_size: self.size
+                                halign: "right"
+                                valign: "middle"
 
                         Label:
                             text: root.loading_message if root.loading else root.inline_status

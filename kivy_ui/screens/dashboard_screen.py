@@ -105,6 +105,9 @@ class DashboardScreen(BaseScreen):
         paid_reservations = int(payload.get("paid_reservations", 0) or 0)
         pending_payments = int(payload.get("pending_payments", 0) or 0)
         failed_payments = int(payload.get("failed_payments", 0) or 0)
+        webhook_failures = int(payload.get("webhook_failures", 0) or 0)
+        active_reservations = int(payload.get("active_reservations", reservations) or reservations)
+        retry_queue = int(payload.get("retry_queue", 0) or 0)
         conversion_rate = float(payload.get("conversion_rate", 0) or 0)
         average_ticket = float(payload.get("average_ticket", 0) or 0)
         occupancy = float(payload.get("occupancy_rate", 0) or 0)
@@ -181,6 +184,9 @@ class DashboardScreen(BaseScreen):
             paid_reservations=paid_reservations,
             pending_payments=pending_payments,
             failed_payments=failed_payments,
+            webhook_failures=webhook_failures,
+            active_reservations=active_reservations,
+            retry_queue=retry_queue,
             conversion_rate=conversion_rate,
             average_ticket=average_ticket,
             most_profitable_court=most_profitable_court,
@@ -288,6 +294,9 @@ class DashboardScreen(BaseScreen):
         paid_reservations: int = 0,
         pending_payments: int = 0,
         failed_payments: int = 0,
+        webhook_failures: int = 0,
+        active_reservations: int = 0,
+        retry_queue: int = 0,
         conversion_rate: float = 0.0,
         average_ticket: float = 0.0,
         most_profitable_court: str = "--",
@@ -306,10 +315,10 @@ class DashboardScreen(BaseScreen):
         self.ids.mini_today_card.set_data(
             {
                 "title": "Reservas de hoy",
-                "value": str(reservations),
+                "value": str(active_reservations or reservations),
                 "status": "Agenda",
                 "tone": "success" if reservations else "warning",
-                "caption": "Partidos registrados en operacion.",
+                "caption": f"Activas: {active_reservations or reservations} | Total: {reservations}",
             }
         )
         self.ids.mini_night_card.set_data(
@@ -327,7 +336,7 @@ class DashboardScreen(BaseScreen):
                 "value": str(pending_payments),
                 "status": "Checkout",
                 "tone": "warning" if pending_payments else "success",
-                "caption": f"Fallidos: {failed_payments} | Conversion {conversion_rate:.1f}%",
+                "caption": f"Fallidos: {failed_payments} | Reintentos: {retry_queue} | Conv. {conversion_rate:.1f}%",
             }
         )
         self.ids.mini_average_card.set_data(
@@ -342,10 +351,10 @@ class DashboardScreen(BaseScreen):
         self.ids.mini_featured_card.set_data(
             {
                 "title": "Cancha mas rentable",
-                "value": most_profitable_court.replace(" Barranquilla", ""),
-                "status": "Ingreso pago",
-                "tone": featured.get("tone", "success"),
-                "caption": "Ordenada por pagos confirmados.",
+                "value": most_profitable_court.replace(" Barranquilla", "") if not webhook_failures else str(webhook_failures),
+                "status": "Webhooks OK" if not webhook_failures else "Webhooks con alerta",
+                "tone": featured.get("tone", "success") if not webhook_failures else "danger",
+                "caption": "Monitoreo de Mercado Pago y eventos.",
             }
         )
 

@@ -473,6 +473,76 @@
                                     row_force_default: True
 
                             CardBox:
+                                id: smart_ops_card
+                                size_hint_y: None
+                                height: self.minimum_height
+                                padding: dp(16)
+                                spacing: dp(10)
+                                background_color: hx(app.theme_state.surface_alt)
+                                border_color: hx(app.theme_state.success)
+                                shadow_offset: dp(1)
+
+                                BoxLayout:
+                                    size_hint_y: None
+                                    height: dp(28)
+                                    spacing: dp(8)
+                                    Label:
+                                        text: "Centro inteligente"
+                                        color: hx(app.theme_state.text_primary)
+                                        font_size: "18sp"
+                                        bold: True
+                                        text_size: self.size
+                                        halign: "left"
+                                        valign: "middle"
+                                    Label:
+                                        text: "SMART OPS"
+                                        color: hx(app.theme_state.success)
+                                        font_size: "10sp"
+                                        bold: True
+                                        size_hint_x: None
+                                        width: dp(92)
+                                        text_size: self.size
+                                        halign: "right"
+                                        valign: "middle"
+
+                                Label:
+                                    text: root.smart_pricing_text
+                                    color: hx(app.theme_state.primary)
+                                    font_size: ds.FONT_LABEL
+                                    size_hint_y: None
+                                    height: self.texture_size[1]
+                                    text_size: self.width, None
+                                    halign: "left"
+                                    valign: "top"
+
+                                Label:
+                                    text: root.smart_suggestion_text
+                                    color: hx(app.theme_state.text_secondary)
+                                    font_size: ds.FONT_LABEL
+                                    size_hint_y: None
+                                    height: self.texture_size[1]
+                                    text_size: self.width, None
+                                    halign: "left"
+                                    valign: "top"
+
+                                Widget:
+                                    size_hint_y: None
+                                    height: dp(1)
+                                    canvas:
+                                        Color:
+                                            rgba: hx(app.theme_state.border)
+                                        Rectangle:
+                                            pos: self.pos
+                                            size: self.size
+
+                                BoxLayout:
+                                    id: activity_feed_list
+                                    orientation: "vertical"
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                                    spacing: dp(6)
+
+                            CardBox:
                                 id: recent_reservations_card
                                 size_hint_y: None
                                 height: self.minimum_height

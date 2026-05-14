@@ -153,6 +153,14 @@ PAYMENT_STATUS_LABELS = {
 }
 
 RESERVATION_STATUS_LABELS = {
+    "draft": "Borrador",
+    "pending_payment": "Pago pendiente",
+    "confirmed": "Confirmada",
+    "paid": "Pagada",
+    "failed": "Fallida",
+    "cancelled": "Cancelada",
+    "refunded": "Reembolsada",
+    "expired": "Expirada",
     "pendiente": "Pendiente",
     "confirmada": "Confirmada",
     "cancelada": "Cancelada",
@@ -331,6 +339,9 @@ class ReservationsScreen(ServiceScreen):
     selected_court_name = StringProperty(FIELD_NAMES[0])
     live_court_summary_text = StringProperty("Selecciona una cancha para completar el formulario.")
     live_courts_data = ListProperty([])
+    smart_suggestion_text = StringProperty("Sugerencia inteligente: selecciona fecha, hora y cancha.")
+    smart_pricing_text = StringProperty("Precio inteligente listo para previsualizar.")
+    activity_feed_data = ListProperty([])
 
     def __init__(self, **kwargs) -> None:
         self._suspend_form_events = True
@@ -353,6 +364,8 @@ class ReservationsScreen(ServiceScreen):
             self._update_layout()
             self._reset_quote_preview()
             self._render_live_courts()
+            self.activity_feed_data = self._build_activity_feed([])
+            self._render_activity_feed()
         finally:
             self._suspend_form_events = False
 
@@ -383,7 +396,7 @@ class ReservationsScreen(ServiceScreen):
         service_options = list(FIELD_NAMES)
         reservations = self.get_service("reservation_service").get_all_reservations()
         pricing_service = self.get_service("pricing_service")
-        confirmed_count = len([item for item in reservations if item.status in {"confirmada", "PAID"}])
+        confirmed_count = len([item for item in reservations if item.status in {"confirmada", "PAID", "confirmed", "paid"}])
 
         reservations_payload = []
         for reservation in reservations:
@@ -428,7 +441,7 @@ class ReservationsScreen(ServiceScreen):
                     "people_text": f"{reservation.people_count} personas",
                     "schedule_text": _display_schedule_label(reservation.schedule),
                     "status_text": RESERVATION_STATUS_LABELS.get(reservation.status, reservation.status.title()),
-                    "status_tone": "success" if reservation.status in {"confirmada", "PAID"} else "danger" if reservation.status in {"FAILED", "CANCELLED", "REFUNDED", "EXPIRED", "cancelada"} else "warning",
+                    "status_tone": "success" if reservation.status in {"confirmada", "PAID", "confirmed", "paid"} else "danger" if reservation.status in {"FAILED", "CANCELLED", "REFUNDED", "EXPIRED", "cancelada", "failed", "cancelled", "refunded", "expired"} else "warning",
                     "payment_status_text": PAYMENT_STATUS_LABELS.get(payment_status, "Pago por confirmar"),
                     "payment_tone": payment_tone,
                     "expiration_text": self._expiration_text(reservation.payment_expires_at, reservation.status),
@@ -437,7 +450,7 @@ class ReservationsScreen(ServiceScreen):
                     "promo_label_text": promo_label,
                     "match_badge_text": match_badge,
                     "total_text": format_currency(reservation.total),
-                    "is_confirmed": reservation.status in {"confirmada", "PAID"},
+                    "is_confirmed": reservation.status in {"confirmada", "PAID", "confirmed", "paid"},
                     "show_management_actions": can_manage_actions,
                 }
             )
@@ -453,6 +466,7 @@ class ReservationsScreen(ServiceScreen):
             ),
             "reservations_data": reservations_payload,
             "live_courts_data": self._build_live_courts_payload(reservations),
+            "activity_feed_data": self._build_activity_feed(reservations),
             "empty_state_text": (
                 "No hay partidos registrados todavia. Crea el primero desde el formulario."
                 if not reservations
@@ -477,11 +491,13 @@ class ReservationsScreen(ServiceScreen):
             )
             self.reservations_data = list(payload["reservations_data"])
             self.live_courts_data = list(payload.get("live_courts_data", []))
+            self.activity_feed_data = list(payload.get("activity_feed_data", []))
             self.empty_state_text = payload["empty_state_text"]
         finally:
             self._suspend_form_events = False
         self._render_reservations()
         self._render_live_courts()
+        self._render_activity_feed()
         self.update_quote()
         self._request_availability_refresh(show_loading=False)
         self.set_status(
@@ -498,6 +514,7 @@ class ReservationsScreen(ServiceScreen):
         self.availability_color = "danger"
         self._render_reservations()
         self._render_live_courts()
+        self._render_activity_feed()
         self.set_status(f"Error al cargar reservas: {error}")
 
     def _render_reservations(self) -> None:
@@ -511,6 +528,60 @@ class ReservationsScreen(ServiceScreen):
             row_data["schedule_text"] = _display_schedule_label(row_data.get("schedule_text", ""))
             row_data["show_management_actions"] = can_manage_actions
             container.add_widget(ReservationRow(**row_data))
+
+    def _build_activity_feed(self, reservations: list) -> list[dict]:
+        items = []
+        sorted_items = sorted(
+            reservations,
+            key=lambda item: str(item.created_at or ""),
+            reverse=True,
+        )[:6]
+        for item in sorted_items:
+            field_name = resolve_field_name(item.service_type, item.address)
+            status_label = RESERVATION_STATUS_LABELS.get(item.status, str(item.status or "").title())
+            payment_label = PAYMENT_STATUS_LABELS.get(str(item.payment_status or "").lower(), "Pago por confirmar")
+            tone = "success" if item.status in {"confirmada", "PAID", "confirmed", "paid"} else "danger" if item.status in {"failed", "cancelled", "expired", "refunded", "FAILED", "CANCELLED", "EXPIRED", "REFUNDED"} else "warning"
+            items.append(
+                {
+                    "title": f"{status_label} | {field_name}",
+                    "detail": f"{item.client_name} | {item.start_time}-{item.end_time} | {payment_label}",
+                    "tone": tone,
+                }
+            )
+        if not items:
+            items.append(
+                {
+                    "title": "Operacion lista",
+                    "detail": "Crea una reserva para activar el feed en vivo.",
+                    "tone": "primary",
+                }
+            )
+        return items
+
+    def _render_activity_feed(self) -> None:
+        if not self.ids or "activity_feed_list" not in self.ids:
+            return
+        theme = active_theme_hex()
+        container = self.ids.activity_feed_list
+        container.clear_widgets()
+        for item in self.activity_feed_data[:6]:
+            color_key = "success" if item.get("tone") == "success" else "danger" if item.get("tone") == "danger" else "primary"
+            container.add_widget(
+                Label(
+                    text=f"[b]{item.get('title', '')}[/b]\n{item.get('detail', '')}",
+                    markup=True,
+                    font_name=UI_FONT,
+                    color=rgba(theme[color_key]),
+                    font_size="12sp",
+                    size_hint_y=None,
+                    height=dp(42),
+                    text_size=(container.width, None),
+                    halign="left",
+                    valign="top",
+                    shorten=True,
+                    shorten_from="right",
+                )
+            )
 
     def _set_service_options(self, options: list[str]) -> None:
         resolved_options = list(FIELD_NAMES)
@@ -555,7 +626,7 @@ class ReservationsScreen(ServiceScreen):
                     "address": FIELDS[field_name],
                     "status": status,
                     "occupancy": f"{round(ratio * 100)}% ocupacion",
-                    "slots": f"{open_slots} slots disponibles",
+                    "slots": f"{open_slots} cupos disponibles",
                     "promotion": meta["promotion"],
                     "court_type": meta["court_type"],
                     "peak": meta["peak"],
@@ -691,27 +762,27 @@ class ReservationsScreen(ServiceScreen):
     def _match_badge_for(self, status: str, schedule: str, people_count: int) -> str:
         if str(status or "").strip() == "PAID":
             return "Partido pagado"
-        if str(status or "").strip() == "PENDING_PAYMENT":
+        if str(status or "").strip() in {"PENDING_PAYMENT", "pending_payment"}:
             return "Checkout activo"
         if int(people_count or 0) >= 8:
             return "Partido destacado"
         if str(schedule or "").strip().lower() == "noche":
             return "Partido prime"
-        if str(status or "").strip().lower() == "confirmada":
+        if str(status or "").strip().lower() in {"confirmada", "confirmed"}:
             return "Partido premium"
         return "Partido en vivo"
 
     def _payment_tone(self, payment_status: str, reservation_status: str) -> str:
-        if payment_status == "paid" or reservation_status == "PAID":
+        if payment_status == "paid" or reservation_status in {"PAID", "paid"}:
             return "success"
-        if payment_status in {"failed", "cancelled", "refunded"} or reservation_status in {"FAILED", "CANCELLED", "REFUNDED", "EXPIRED"}:
+        if payment_status in {"failed", "cancelled", "refunded"} or reservation_status in {"FAILED", "CANCELLED", "REFUNDED", "EXPIRED", "failed", "cancelled", "refunded", "expired"}:
             return "danger"
         return "warning"
 
     def _expiration_text(self, expires_at: str | None, reservation_status: str) -> str:
-        if reservation_status == "EXPIRED":
+        if reservation_status in {"EXPIRED", "expired"}:
             return "Reserva expirada"
-        if reservation_status == "PAID":
+        if reservation_status in {"PAID", "paid"}:
             return "Cupo bloqueado por pago"
         if not expires_at:
             return ""
@@ -729,6 +800,31 @@ class ReservationsScreen(ServiceScreen):
     def _set_save_feedback(self, message: str, tone: str = "neutral") -> None:
         self.save_feedback_text = message
         self.save_feedback_tone = tone
+
+    def _update_local_smart_suggestion(self) -> None:
+        if not self.ids:
+            return
+        field_name = self._selected_field_name()
+        reservation_date = self.ids.date_input.text.strip()
+        start_time = self.ids.start_time_spinner.text.strip()
+        end_time = self.ids.end_time_spinner.text.strip()
+        if not reservation_date or start_time not in self.start_time_options or end_time == "Sin disponibilidad":
+            self.smart_suggestion_text = "Sugerencia inteligente: completa fecha y rango."
+            return
+        try:
+            service = self.get_service("reservation_service")
+            availability = service.get_daily_availability(field_backend_type(field_name), reservation_date)
+            if availability["available_count"] <= 0:
+                self.smart_suggestion_text = "Sin cupos libres: prueba otro dia o cancha."
+            elif availability["occupied_count"] > availability["available_count"]:
+                self.smart_suggestion_text = "Alta demanda: reserva cuanto antes o mueve a horario cercano."
+            else:
+                self.smart_suggestion_text = (
+                    f"Recomendacion: {field_name} mantiene {availability['available_count']} cupos libres; "
+                    f"turnaround {10} min protegido."
+                )
+        except Exception:
+            self.smart_suggestion_text = "Sugerencia inteligente no disponible en este momento."
 
     def _extract_reservation_id(self, reservation) -> int:
         if isinstance(reservation, dict):
@@ -773,7 +869,7 @@ class ReservationsScreen(ServiceScreen):
         if not reservation_id:
             self.notify("Reserva", "No se encontro la reserva seleccionada.", tone="warning")
             return
-        if isinstance(reservation, dict) and str(reservation.get("status", "")).lower() == "confirmada":
+        if isinstance(reservation, dict) and str(reservation.get("status", "")).lower() in {"confirmada", "confirmed"}:
             self.notify("Reserva", "La reserva ya estaba confirmada.", tone="primary")
             return
         self.request_confirm_reservation(reservation_id)
@@ -976,6 +1072,8 @@ class ReservationsScreen(ServiceScreen):
             return
 
         promotions = " | ".join(pricing["applied_labels"]) if pricing["applied_labels"] else "Sin promociones"
+        smart_rules = pricing.get("smart_rules") or []
+        smart_adjustment = float(pricing.get("smart_adjustment", 0.0) or 0.0)
         weekend_text = (
             f"Incluye recargo fin de semana del {pricing['weekend_surcharge_percent']:.0f}%."
             if pricing["weekend_surcharge_percent"]
@@ -994,7 +1092,13 @@ class ReservationsScreen(ServiceScreen):
             f"Rango: {pricing['time_range']} | Base: {format_currency(pricing['base_price'])} | "
             f"Subtotal: {format_currency(pricing['subtotal'])}. {weekend_text}"
         )
+        self.smart_pricing_text = (
+            f"Ajuste inteligente: {format_currency(smart_adjustment)} | {'; '.join(smart_rules)}"
+            if smart_rules
+            else "Tarifa base sin ajuste inteligente activo."
+        )
         self.selected_range_text = f"Rango seleccionado: {pricing['time_range']}"
+        self._update_local_smart_suggestion()
 
     def open_calendar(self) -> None:
         app = App.get_running_app()
@@ -1191,7 +1295,7 @@ class ReservationsScreen(ServiceScreen):
 
     def _handle_confirm_success(self, reservation_id: int) -> None:
         if self.current_reservation_id == reservation_id:
-            self.current_status = "confirmada"
+            self.current_status = "confirmed"
         self.notify("Reserva confirmada", "La reserva fue marcada como confirmada.", tone="success")
         App.get_running_app().refresh_screens(["dashboard", "reservations", "calendar", "reports"])
 

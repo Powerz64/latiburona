@@ -9,4 +9,5 @@ python-multipart
 email-validator
 requests
 reportlab
+mercadopago>=2.2.3
 psycopg[binary]>=3.2.0

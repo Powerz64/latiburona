@@ -51,7 +51,11 @@ class ApiResponseError(RuntimeError):
     def __init__(self, status_code: int, payload) -> None:
         self.status_code = status_code
         self.payload = payload
-        message = payload.get("detail") if isinstance(payload, dict) else str(payload)
+        detail = payload.get("detail") if isinstance(payload, dict) else payload
+        if isinstance(detail, dict):
+            message = detail.get("message") or detail.get("error") or str(detail)
+        else:
+            message = str(detail or "")
         super().__init__(message or f"Respuesta inesperada del API ({status_code}).")
 
 

@@ -1454,8 +1454,8 @@
                 size: self.size
                 radius: [dp(14)]
         BoxLayout:
-            size_hint: 1, 1
-            size_hint_x: 1 if root.show_management_actions else 0
+            size_hint: (1, 1) if root.show_management_actions else (None, 1)
+            width: self.parent.width if root.show_management_actions else 0
             spacing: dp(14)
             opacity: 1 if root.show_management_actions else 0
             SecondaryButton:
@@ -1471,14 +1471,19 @@
                 disabled: not root.show_management_actions
                 on_release: app.get_screen("reservations").on_delete(root.data)
         BoxLayout:
-            size_hint: 1, 1
-            size_hint_x: 0 if root.show_management_actions else 1
-            spacing: dp(14)
+            size_hint: (None, 1) if root.show_management_actions else (1, 1)
+            width: 0 if root.show_management_actions else self.parent.width
             opacity: 0 if root.show_management_actions else 1
-            SuccessButton:
+            padding: dp(4), 0
+            Widget:
+            PrimaryButton:
+                size_hint: None, None
+                width: min(root.width * 0.72, dp(260))
+                height: dp(34)
                 text: "Pagar reserva"
                 disabled: root.show_management_actions
                 on_release: app.get_screen("reservations").on_pay(root.data)
+            Widget:
 
 <TournamentRow>:
     size_hint_y: None

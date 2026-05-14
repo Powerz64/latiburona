@@ -88,6 +88,10 @@ class PaymentSettings:
     provider: str
     mode: str
     timeout_minutes: int
+    public_base_url: str
+    success_url: str
+    failure_url: str
+    pending_url: str
 
 
 def load_payment_settings() -> PaymentSettings:
@@ -98,6 +102,14 @@ def load_payment_settings() -> PaymentSettings:
         provider=os.getenv("PAYMENT_PROVIDER", "manual").strip().lower() or "manual",
         mode=os.getenv("PAYMENT_MODE", "test").strip().lower() or "test",
         timeout_minutes=max(5, _get_env_int("RESERVATION_PAYMENT_TIMEOUT_MINUTES", 20)),
+        public_base_url=(
+            os.getenv("LATIBURONA_PUBLIC_API_URL", "").strip()
+            or os.getenv("PUBLIC_API_BASE_URL", "").strip()
+            or os.getenv("RENDER_EXTERNAL_URL", "").strip()
+        ),
+        success_url=os.getenv("PAYMENT_SUCCESS_URL", "").strip(),
+        failure_url=os.getenv("PAYMENT_FAILURE_URL", "").strip(),
+        pending_url=os.getenv("PAYMENT_PENDING_URL", "").strip(),
     )
 
 

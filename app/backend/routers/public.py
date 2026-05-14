@@ -23,7 +23,7 @@ router = APIRouter(prefix="/public", tags=["public"])
 
 
 def _raise_payment_error(exc: PaymentServiceError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message)
+    raise HTTPException(status_code=exc.status_code, detail=exc.public_detail())
 
 
 @router.get("/availability", response_model=PublicAvailabilityResponse)

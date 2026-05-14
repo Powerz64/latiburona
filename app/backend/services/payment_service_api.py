@@ -3,10 +3,11 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlencode
 
 import requests
 from sqlalchemy import select
@@ -42,12 +43,24 @@ RESERVATION_EXPIRED = "EXPIRED"
 
 MERCADO_PAGO_PREFERENCES_URL = "https://api.mercadopago.com/checkout/preferences"
 MERCADO_PAGO_PAYMENT_URL = "https://api.mercadopago.com/v1/payments/{payment_id}"
+logger = logging.getLogger("latiburona.payments")
 
 
 @dataclass
 class PaymentServiceError(Exception):
     status_code: int
     message: str
+    code: str = "payment_error"
+
+    def __str__(self) -> str:
+        return self.message
+
+    def public_detail(self) -> dict:
+        return {
+            "error": self.code,
+            "message": self.message,
+            "retryable": self.status_code >= 500,
+        }
 
 
 def _safe_json(payload) -> str:
@@ -55,6 +68,19 @@ def _safe_json(payload) -> str:
         return json.dumps(payload or {}, ensure_ascii=True, sort_keys=True)[:12000]
     except TypeError:
         return json.dumps({"unserializable": True}, ensure_ascii=True)
+
+
+def _safe_response_text(response: requests.Response) -> str:
+    text = (response.text or "").strip()
+    if not text:
+        return ""
+    authorization = ""
+    request = getattr(response, "request", None)
+    headers = getattr(request, "headers", {}) or {}
+    authorization = str(headers.get("Authorization") or "")
+    if authorization:
+        text = text.replace(authorization, "[redacted]")
+    return text[:1500]
 
 
 def _utcnow() -> datetime:
@@ -67,32 +93,81 @@ class MercadoPagoClient:
 
     def _headers(self) -> dict[str, str]:
         if not self.settings.access_token:
-            raise PaymentServiceError(503, "Mercado Pago no esta configurado para crear pagos.")
+            raise PaymentServiceError(
+                503,
+                "Mercado Pago no esta configurado para crear pagos.",
+                "mercadopago_missing_access_token",
+            )
         return {
             "Authorization": f"Bearer {self.settings.access_token}",
             "Content-Type": "application/json",
         }
 
     def create_preference(self, payload: dict) -> dict:
-        response = requests.post(
-            MERCADO_PAGO_PREFERENCES_URL,
-            headers=self._headers(),
-            json=payload,
-            timeout=12,
-        )
+        try:
+            response = requests.post(
+                MERCADO_PAGO_PREFERENCES_URL,
+                headers=self._headers(),
+                json=payload,
+                timeout=12,
+            )
+        except requests.RequestException as exc:
+            logger.warning("mercadopago preference network_error type=%s", type(exc).__name__)
+            raise PaymentServiceError(
+                502,
+                "No fue posible conectar con Mercado Pago para crear el checkout.",
+                "mercadopago_network_error",
+            ) from exc
         if response.status_code not in {200, 201}:
-            raise PaymentServiceError(response.status_code, "Mercado Pago no pudo crear la preferencia.")
-        return response.json()
+            logger.warning(
+                "mercadopago preference rejected status=%s body=%s",
+                response.status_code,
+                _safe_response_text(response),
+            )
+            raise PaymentServiceError(
+                502 if response.status_code >= 500 else 400,
+                "Mercado Pago no pudo crear la preferencia de checkout.",
+                "mercadopago_preference_rejected",
+            )
+        try:
+            return response.json()
+        except ValueError as exc:
+            logger.warning("mercadopago preference invalid_json status=%s", response.status_code)
+            raise PaymentServiceError(
+                502,
+                "Mercado Pago respondio con un formato invalido.",
+                "mercadopago_invalid_response",
+            ) from exc
 
     def get_payment(self, payment_id: str) -> dict:
-        response = requests.get(
-            MERCADO_PAGO_PAYMENT_URL.format(payment_id=payment_id),
-            headers=self._headers(),
-            timeout=12,
-        )
+        try:
+            response = requests.get(
+                MERCADO_PAGO_PAYMENT_URL.format(payment_id=payment_id),
+                headers=self._headers(),
+                timeout=12,
+            )
+        except requests.RequestException as exc:
+            logger.warning("mercadopago payment lookup network_error type=%s", type(exc).__name__)
+            raise PaymentServiceError(
+                502,
+                "No fue posible consultar el pago en Mercado Pago.",
+                "mercadopago_network_error",
+            ) from exc
         if response.status_code != 200:
-            raise PaymentServiceError(response.status_code, "No fue posible consultar el pago en Mercado Pago.")
-        return response.json()
+            logger.warning("mercadopago payment lookup rejected status=%s", response.status_code)
+            raise PaymentServiceError(
+                502 if response.status_code >= 500 else 400,
+                "No fue posible consultar el pago en Mercado Pago.",
+                "mercadopago_payment_lookup_failed",
+            )
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise PaymentServiceError(
+                502,
+                "Mercado Pago respondio con un formato invalido.",
+                "mercadopago_invalid_response",
+            ) from exc
 
 
 class PaymentServiceAPI:
@@ -187,7 +262,9 @@ class PaymentServiceAPI:
         return released
 
     def _preference_payload(self, reserva: Reserva, base_url: str) -> dict:
-        notification_url = f"{base_url.rstrip('/')}/payments/webhook?source_news=webhooks"
+        public_base_url = self._public_base_url(base_url)
+        notification_url = f"{public_base_url}/payments/webhook?source_news=webhooks"
+        back_urls = self._back_urls(public_base_url, reserva.id)
         title = f"LaTiburona - {reserva.cancha.nombre if reserva.cancha else 'Cancha'}"
         return {
             "items": [
@@ -200,12 +277,47 @@ class PaymentServiceAPI:
                 }
             ],
             "external_reference": str(reserva.id),
+            "back_urls": back_urls,
+            "auto_return": "approved",
             "notification_url": notification_url,
             "metadata": {
                 "reservation_id": reserva.id,
                 "payment_mode": self.settings.mode,
             },
         }
+
+    def _public_base_url(self, request_base_url: str) -> str:
+        raw_value = (self.settings.public_base_url or request_base_url or "").strip().rstrip("/")
+        if raw_value.startswith("http://") and "onrender.com" in raw_value:
+            raw_value = raw_value.replace("http://", "https://", 1)
+        return raw_value or "https://latiburona-1.onrender.com"
+
+    def _back_urls(self, public_base_url: str, reservation_id: int) -> dict:
+        query = urlencode({"reservation_id": reservation_id})
+        return {
+            "success": self.settings.success_url or f"{public_base_url}/health?payment=success&{query}",
+            "failure": self.settings.failure_url or f"{public_base_url}/health?payment=failure&{query}",
+            "pending": self.settings.pending_url or f"{public_base_url}/health?payment=pending&{query}",
+        }
+
+    def _validate_provider_ready(self) -> None:
+        if self.settings.provider != "mercadopago":
+            return
+        if not self.settings.access_token:
+            raise PaymentServiceError(
+                503,
+                "Mercado Pago no esta configurado para crear pagos.",
+                "mercadopago_missing_access_token",
+            )
+
+    @staticmethod
+    def _validate_amount(amount: float) -> None:
+        if amount <= 0:
+            raise PaymentServiceError(
+                422,
+                "La reserva no tiene un valor valido para generar checkout.",
+                "invalid_payment_amount",
+            )
 
     def create_payment(self, reservation_id: int, base_url: str) -> dict:
         self.expire_unpaid_reservations()
@@ -220,6 +332,8 @@ class PaymentServiceAPI:
         if existing and existing.status in {PAYMENT_STATUS_PENDING, PAYMENT_STATUS_PAID} and existing.payment_url:
             return self.serialize_status(reserva, existing, expiration)
 
+        self._validate_amount(float(reserva.total or 0.0))
+        self._validate_provider_ready()
         expires_at = _utcnow() + timedelta(minutes=self.settings.timeout_minutes)
         reserva.estado = RESERVATION_PENDING_PAYMENT if reserva.estado not in {"PAID", "confirmada"} else reserva.estado
         self.db.add(reserva)
@@ -229,7 +343,16 @@ class PaymentServiceAPI:
         payment_url = ""
         raw_payload = {}
         if provider == "mercadopago":
-            preference = self.mercado_pago.create_preference(self._preference_payload(reserva, base_url))
+            preference_payload = self._preference_payload(reserva, base_url)
+            logger.info(
+                "payment checkout create provider=mercadopago mode=%s reservation_id=%s amount=%.2f has_public_key=%s has_access_token=%s",
+                self.settings.mode,
+                reserva.id,
+                float(reserva.total or 0.0),
+                bool(self.settings.public_key),
+                bool(self.settings.access_token),
+            )
+            preference = self.mercado_pago.create_preference(preference_payload)
             preference_id = str(preference.get("id") or "")
             init_point = str(preference.get("init_point") or "")
             sandbox_init_point = str(preference.get("sandbox_init_point") or "")
@@ -242,6 +365,14 @@ class PaymentServiceAPI:
                 "id": preference_id,
                 "init_point_present": bool(preference.get("init_point")),
                 "sandbox_init_point_present": bool(preference.get("sandbox_init_point")),
+                "payload": {
+                    "items_count": len(preference_payload.get("items", [])),
+                    "currency_id": preference_payload["items"][0].get("currency_id"),
+                    "external_reference": preference_payload.get("external_reference"),
+                    "has_notification_url": bool(preference_payload.get("notification_url")),
+                    "has_back_urls": bool(preference_payload.get("back_urls")),
+                    "auto_return": preference_payload.get("auto_return"),
+                },
             }
         else:
             provider = "manual"

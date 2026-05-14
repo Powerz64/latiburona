@@ -18,7 +18,7 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 
 
 def _raise_payment_error(exc: PaymentServiceError) -> None:
-    raise HTTPException(status_code=exc.status_code, detail=exc.message)
+    raise HTTPException(status_code=exc.status_code, detail=exc.public_detail())
 
 
 @router.post("/create", response_model=PaymentCreateResponse)

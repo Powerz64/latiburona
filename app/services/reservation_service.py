@@ -145,7 +145,7 @@ class ReservationService:
             FROM reservations
             WHERE service_type = ?
               AND reservation_date = ?
-              AND status != 'cancelada'
+              AND status NOT IN ('cancelada', 'cancelled', 'failed', 'refunded', 'expired')
               AND start_time < ?
               AND end_time > ?
         """
@@ -170,7 +170,7 @@ class ReservationService:
             FROM reservations
             WHERE service_type = ?
               AND reservation_date = ?
-              AND status != 'cancelada'
+              AND status NOT IN ('cancelada', 'cancelled', 'failed', 'refunded', 'expired')
         """
         params: list[object] = [cancha_id, fecha]
         if exclude_reservation_id is not None:
@@ -430,7 +430,7 @@ class ReservationService:
     def confirm_reservation(self, reservation_id: int) -> None:
         with self.database_service.get_connection() as connection:
             connection.execute(
-                "UPDATE reservations SET status = 'confirmada' WHERE id = ?",
+                "UPDATE reservations SET status = 'confirmed' WHERE id = ?",
                 (reservation_id,),
             )
 

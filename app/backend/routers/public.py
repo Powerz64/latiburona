@@ -16,6 +16,7 @@ from app.backend.schemas import (
 )
 from app.backend.services.payment_service_api import PaymentServiceAPI, PaymentServiceError
 from app.backend.services.reservation_service_api import ReservationConflictError, ReservationServiceAPI
+from app.backend.services.reservation_state_machine import FAILED, apply_state_transition
 from app.utils.constants import TIME_OPTIONS
 from app.utils.time_slots import next_time_value
 
@@ -86,8 +87,7 @@ def public_reserve(payload: PublicReserveRequest, request: Request, db: Session 
         payment = payment_service.create_payment(reserva.id, str(request.base_url))
         link = payment_service.create_public_link(reserva.id)
     except PaymentServiceError as exc:
-        reserva.estado = "FAILED"
-        db.add(reserva)
+        apply_state_transition(db, reserva, FAILED, action="public_payment_create_failed", details=exc.code)
         db.commit()
         _raise_payment_error(exc)
     return {

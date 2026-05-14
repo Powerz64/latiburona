@@ -31,6 +31,9 @@ DEFAULT_SETTINGS = {
     "weekend_surcharge": 10.0,
     "bulk_people_threshold": 5,
     "bulk_discount": 15.0,
+    "peak_hour_multiplier": 1.18,
+    "off_peak_discount": 8.0,
+    "promo_window_discount": 12.0,
     "allow_children": True,
     "allow_pets": False,
 }

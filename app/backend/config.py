@@ -124,6 +124,15 @@ def load_backend_pricing_settings() -> AppSettings:
             DEFAULT_SETTINGS["bulk_people_threshold"],
         ),
         bulk_discount=_get_env_float("LATIBURONA_BULK_DISCOUNT", DEFAULT_SETTINGS["bulk_discount"]),
+        peak_hour_multiplier=_get_env_float(
+            "LATIBURONA_PEAK_HOUR_MULTIPLIER",
+            DEFAULT_SETTINGS["peak_hour_multiplier"],
+        ),
+        off_peak_discount=_get_env_float("LATIBURONA_OFF_PEAK_DISCOUNT", DEFAULT_SETTINGS["off_peak_discount"]),
+        promo_window_discount=_get_env_float(
+            "LATIBURONA_PROMO_WINDOW_DISCOUNT",
+            DEFAULT_SETTINGS["promo_window_discount"],
+        ),
         allow_children=_get_env_bool("LATIBURONA_ALLOW_CHILDREN", DEFAULT_SETTINGS["allow_children"]),
         allow_pets=_get_env_bool("LATIBURONA_ALLOW_PETS", DEFAULT_SETTINGS["allow_pets"]),
     )

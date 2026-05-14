@@ -118,6 +118,9 @@ def _seed_app_settings_snapshot(session: Session) -> None:
         "weekend_surcharge": os.getenv("LATIBURONA_WEEKEND_SURCHARGE", "10"),
         "bulk_discount": os.getenv("LATIBURONA_BULK_DISCOUNT", "15"),
         "bulk_people_threshold": os.getenv("LATIBURONA_BULK_PEOPLE_THRESHOLD", "5"),
+        "peak_hour_multiplier": os.getenv("LATIBURONA_PEAK_HOUR_MULTIPLIER", "1.18"),
+        "off_peak_discount": os.getenv("LATIBURONA_OFF_PEAK_DISCOUNT", "8"),
+        "promo_window_discount": os.getenv("LATIBURONA_PROMO_WINDOW_DISCOUNT", "12"),
     }
     existing = {
         item.key
@@ -151,6 +154,9 @@ def _ensure_schema_compatibility() -> None:
             connection.execute(text("ALTER TABLE canchas ADD COLUMN is_active BOOLEAN DEFAULT TRUE"))
         if "created_at" not in canchas_columns:
             connection.execute(text("ALTER TABLE canchas ADD COLUMN created_at TIMESTAMP"))
+        for column_name in ("state_updated_at", "cancelled_at", "paid_at", "expired_at", "refunded_at"):
+            if column_name not in reservas_columns:
+                connection.execute(text(f"ALTER TABLE reservas ADD COLUMN {column_name} TIMESTAMP"))
 
 
 def _backfill_user_roles(session: Session) -> None:

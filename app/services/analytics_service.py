@@ -17,7 +17,7 @@ class AnalyticsService:
         return [
             item
             for item in self.reservation_service.get_all_reservations()
-            if item.status not in {"cancelada", "CANCELLED", "FAILED", "REFUNDED", "EXPIRED"}
+            if item.status not in {"cancelada", "cancelled", "CANCELLED", "failed", "FAILED", "refunded", "REFUNDED", "expired", "EXPIRED"}
         ]
 
     def _hour_counts(self) -> Counter:
@@ -178,7 +178,7 @@ class AnalyticsService:
         night_share = schedule_counts["Noche"] / total_slots
         morning_share = schedule_counts["Manana"] / total_slots
         afternoon_share = schedule_counts["Tarde"] / total_slots
-        pending_share = len([item for item in reservations if item.status == "pendiente"]) / total
+        pending_share = len([item for item in reservations if item.status in {"pendiente", "draft", "pending_payment", "PENDING_PAYMENT"}]) / total
 
         if night_share >= 0.4:
             insights.append("Alta demanda en horario nocturno.")
@@ -209,7 +209,7 @@ class AnalyticsService:
         total_slots = max(sum(schedule_counts.values()), 1)
         night_share = schedule_counts["Noche"] / total_slots
         morning_share = schedule_counts["Manana"] / total_slots
-        pending_count = len([item for item in reservations if item.status == "pendiente"])
+        pending_count = len([item for item in reservations if item.status in {"pendiente", "draft", "pending_payment", "PENDING_PAYMENT"}])
         recommendations: list[str] = []
 
         if occupancy < 50:
@@ -239,11 +239,11 @@ class AnalyticsService:
         reservations = self._reservations()
         total_reservations = len(reservations)
         total_revenue = self.total_revenue()
-        confirmed_statuses = {"confirmada", "PAID"}
-        pending_statuses = {"pendiente", "PENDING_PAYMENT", "PARTIAL_PAYMENT"}
+        confirmed_statuses = {"confirmada", "confirmed", "PAID", "paid"}
+        pending_statuses = {"pendiente", "draft", "pending_payment", "PENDING_PAYMENT", "PARTIAL_PAYMENT"}
         confirmed_revenue = round(sum(float(item.total or 0.0) for item in reservations if item.status in confirmed_statuses), 2)
         pending_revenue = round(total_revenue - confirmed_revenue, 2)
-        paid_reservations = [item for item in reservations if item.status == "PAID"]
+        paid_reservations = [item for item in reservations if item.status in {"PAID", "paid"}]
         today = date.today()
         week_start = today - timedelta(days=today.weekday())
         week_end = week_start + timedelta(days=6)
@@ -299,8 +299,10 @@ class AnalyticsService:
             "confirmed_reservations": len([item for item in reservations if item.status in confirmed_statuses]),
             "pending_reservations": len([item for item in reservations if item.status in pending_statuses]),
             "paid_reservations": len(paid_reservations),
-            "pending_payments": len([item for item in reservations if item.status in {"PENDING_PAYMENT", "PARTIAL_PAYMENT"}]),
-            "failed_payments": len([item for item in reservations if item.status == "FAILED"]),
+            "pending_payments": len([item for item in reservations if item.status in {"pending_payment", "PENDING_PAYMENT", "PARTIAL_PAYMENT"}]),
+            "failed_payments": len([item for item in reservations if item.status in {"failed", "FAILED"}]),
+            "webhook_failures": 0,
+            "active_reservations": len([item for item in reservations if item.status not in {"cancelada", "cancelled", "failed", "refunded", "expired"}]),
             "conversion_rate": round((len(paid_reservations) / total_reservations) * 100, 2) if total_reservations else 0.0,
             "most_profitable_court": top_court,
             "average_ticket": round(sum(float(item.total or 0.0) for item in paid_reservations) / len(paid_reservations), 2) if paid_reservations else 0.0,

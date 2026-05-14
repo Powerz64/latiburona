@@ -16,6 +16,8 @@ class PricingResult:
     bulk_discount_percent: float
     bulk_discount_amount: float
     applied_labels: tuple[str, ...]
+    smart_adjustment: float = 0.0
+    smart_rules: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         return {
@@ -33,6 +35,8 @@ class PricingResult:
             "bulk_discount_percent": self.bulk_discount_percent,
             "bulk_discount_amount": self.bulk_discount_amount,
             "applied_labels": list(self.applied_labels),
+            "smart_adjustment": self.smart_adjustment,
+            "smart_rules": list(self.smart_rules),
             "breakdown": self.breakdown,
         }
 
@@ -47,6 +51,7 @@ class PricingResult:
             ("Valor recargo", self.weekend_surcharge_amount),
             ("Descuento por grupo", f"{self.bulk_discount_percent:.0f}%"),
             ("Valor descuento", self.bulk_discount_amount),
+            ("Ajuste inteligente", self.smart_adjustment),
             ("Total", self.total),
         ]
 

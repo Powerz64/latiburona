@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.backend.db import Base
@@ -42,6 +42,11 @@ class Reserva(Base):
     address: Mapped[str] = mapped_column(String(200))
     people_count: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    state_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    expired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    refunded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     user: Mapped["User | None"] = relationship(back_populates="reservas")
     cancha: Mapped[Cancha] = relationship(back_populates="reservas")
@@ -137,6 +142,40 @@ class PaymentTransaction(Base):
     raw_payload_json: Mapped[str] = mapped_column(Text, default="")
 
     reservation: Mapped[Reserva] = relationship(back_populates="payment_transactions")
+
+
+class PaymentEvent(Base):
+    __tablename__ = "payment_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    transaction_id: Mapped[int | None] = mapped_column(ForeignKey("payment_transactions.id"), nullable=True, index=True)
+    reservation_id: Mapped[int | None] = mapped_column(ForeignKey("reservas.id"), nullable=True, index=True)
+    provider: Mapped[str] = mapped_column(String(40), default="manual", index=True)
+    provider_event_id: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    event_type: Mapped[str] = mapped_column(String(80), default="payment_event", index=True)
+    previous_status: Mapped[str] = mapped_column(String(30), default="")
+    new_status: Mapped[str] = mapped_column(String(30), default="")
+    status: Mapped[str] = mapped_column(String(30), default="processed", index=True)
+    raw_payload_json: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+
+
+class WebhookDeliveryLog(Base):
+    __tablename__ = "webhook_delivery_logs"
+    __table_args__ = (UniqueConstraint("delivery_key", name="uq_webhook_delivery_key"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    provider: Mapped[str] = mapped_column(String(40), default="mercadopago", index=True)
+    delivery_key: Mapped[str] = mapped_column(String(160), index=True)
+    provider_event_id: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    event_type: Mapped[str] = mapped_column(String(80), default="", index=True)
+    status: Mapped[str] = mapped_column(String(30), default="received", index=True)
+    duplicate: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    error_message: Mapped[str] = mapped_column(Text, default="")
+    raw_payload_json: Mapped[str] = mapped_column(Text, default="")
+    received_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
 
 
 class ReservationPublicLink(Base):

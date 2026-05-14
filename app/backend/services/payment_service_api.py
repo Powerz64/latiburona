@@ -11,21 +11,34 @@ from urllib.parse import parse_qs, urlencode
 
 import requests
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.backend.config import PaymentSettings, load_payment_settings
 from app.backend.models import (
     AuditLog,
+    PaymentEvent,
     PaymentTransaction,
     Reserva,
     ReservationExpiration,
     ReservationPublicLink,
     User,
+    WebhookDeliveryLog,
 )
 from app.backend.services.auth_service import user_can_manage_global
 from app.backend.services.reservation_service_api import (
     PENDING_RESERVATION_STATES,
     RELEASED_RESERVATION_STATES,
+)
+from app.backend.services.reservation_state_machine import (
+    apply_state_transition,
+    CANCELLED as RESERVATION_CANCELLED,
+    EXPIRED as RESERVATION_EXPIRED,
+    FAILED as RESERVATION_FAILED,
+    PAID as RESERVATION_PAID,
+    PENDING_PAYMENT as RESERVATION_PENDING_PAYMENT,
+    REFUNDED as RESERVATION_REFUNDED,
+    ReservationStateError,
 )
 
 PAYMENT_STATUS_PENDING = "pending"
@@ -33,13 +46,6 @@ PAYMENT_STATUS_PAID = "paid"
 PAYMENT_STATUS_FAILED = "failed"
 PAYMENT_STATUS_REFUNDED = "refunded"
 PAYMENT_STATUS_CANCELLED = "cancelled"
-
-RESERVATION_PENDING_PAYMENT = "PENDING_PAYMENT"
-RESERVATION_PAID = "PAID"
-RESERVATION_FAILED = "FAILED"
-RESERVATION_CANCELLED = "CANCELLED"
-RESERVATION_REFUNDED = "REFUNDED"
-RESERVATION_EXPIRED = "EXPIRED"
 
 MERCADO_PAGO_PREFERENCES_URL = "https://api.mercadopago.com/checkout/preferences"
 MERCADO_PAGO_PAYMENT_URL = "https://api.mercadopago.com/v1/payments/{payment_id}"
@@ -188,6 +194,97 @@ class PaymentServiceAPI:
             )
         )
 
+    def _payment_event(
+        self,
+        *,
+        transaction: PaymentTransaction | None,
+        reservation_id: int | None,
+        event_type: str,
+        previous_status: str = "",
+        new_status: str = "",
+        provider_event_id: str | None = None,
+        raw_payload: dict | None = None,
+        status: str = "processed",
+    ) -> None:
+        self.db.add(
+            PaymentEvent(
+                transaction_id=transaction.id if transaction is not None else None,
+                reservation_id=reservation_id,
+                provider=self.settings.provider,
+                provider_event_id=provider_event_id,
+                event_type=event_type,
+                previous_status=previous_status,
+                new_status=new_status,
+                status=status,
+                raw_payload_json=_safe_json(raw_payload or {}),
+                processed_at=_utcnow() if status in {"processed", "duplicate", "failed"} else None,
+            )
+        )
+
+    def _webhook_delivery_key(self, payload: dict, headers: dict, raw_query: str) -> str:
+        data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+        query_params = parse_qs(raw_query or "")
+        provider_event_id = str(
+            headers.get("x-request-id")
+            or headers.get("X-Request-Id")
+            or payload.get("id")
+            or data.get("id")
+            or (query_params.get("data.id") or query_params.get("id") or [""])[0]
+            or ""
+        )
+        event_type = str(payload.get("type") or payload.get("action") or payload.get("topic") or "payment")
+        if provider_event_id:
+            return f"{self.settings.provider}:{event_type}:{provider_event_id}"
+        digest = hashlib.sha256(_safe_json({"payload": payload, "query": raw_query}).encode()).hexdigest()
+        return f"{self.settings.provider}:{event_type}:{digest}"
+
+    def _record_webhook_delivery(self, payload: dict, headers: dict, raw_query: str) -> tuple[WebhookDeliveryLog, bool]:
+        delivery_key = self._webhook_delivery_key(payload, headers, raw_query)
+        existing = self.db.scalar(select(WebhookDeliveryLog).where(WebhookDeliveryLog.delivery_key == delivery_key))
+        if existing is not None:
+            existing.duplicate = True
+            existing.status = "duplicate"
+            existing.processed_at = existing.processed_at or _utcnow()
+            self.db.add(existing)
+            self.db.commit()
+            return existing, True
+
+        data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+        query_params = parse_qs(raw_query or "")
+        provider_event_id = str(data.get("id") or payload.get("id") or (query_params.get("data.id") or query_params.get("id") or [""])[0] or "")
+        delivery = WebhookDeliveryLog(
+            provider=self.settings.provider,
+            delivery_key=delivery_key,
+            provider_event_id=provider_event_id,
+            event_type=str(payload.get("type") or payload.get("action") or payload.get("topic") or "payment"),
+            status="received",
+            raw_payload_json=_safe_json(
+                {
+                    "type": payload.get("type"),
+                    "action": payload.get("action"),
+                    "topic": payload.get("topic"),
+                    "data_id_present": bool(provider_event_id),
+                    "query_present": bool(raw_query),
+                }
+            ),
+        )
+        self.db.add(delivery)
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            existing = self.db.scalar(select(WebhookDeliveryLog).where(WebhookDeliveryLog.delivery_key == delivery_key))
+            if existing is not None:
+                existing.duplicate = True
+                existing.status = "duplicate"
+                existing.processed_at = existing.processed_at or _utcnow()
+                self.db.add(existing)
+                self.db.commit()
+                return existing, True
+            raise
+        self.db.refresh(delivery)
+        return delivery, False
+
     def _reservation_query(self, reservation_id: int):
         query = (
             select(Reserva)
@@ -250,8 +347,13 @@ class PaymentServiceAPI:
         for expiration in expirations:
             reserva = expiration.reservation
             if reserva and reserva.estado in PENDING_RESERVATION_STATES:
-                reserva.estado = RESERVATION_EXPIRED
-                self.db.add(reserva)
+                apply_state_transition(
+                    self.db,
+                    reserva,
+                    RESERVATION_EXPIRED,
+                    actor=self.current_user,
+                    action="reservation_payment_expired",
+                )
                 released += 1
             expiration.status = "released"
             expiration.released_at = now
@@ -335,8 +437,15 @@ class PaymentServiceAPI:
         self._validate_amount(float(reserva.total or 0.0))
         self._validate_provider_ready()
         expires_at = _utcnow() + timedelta(minutes=self.settings.timeout_minutes)
-        reserva.estado = RESERVATION_PENDING_PAYMENT if reserva.estado not in {"PAID", "confirmada"} else reserva.estado
-        self.db.add(reserva)
+        if reserva.estado not in {"PAID", "confirmada", RESERVATION_PAID, "confirmed"}:
+            apply_state_transition(
+                self.db,
+                reserva,
+                RESERVATION_PENDING_PAYMENT,
+                actor=self.current_user,
+                action="reservation_pending_payment",
+                details="checkout solicitado",
+            )
 
         provider = self.settings.provider
         preference_id = None
@@ -392,6 +501,15 @@ class PaymentServiceAPI:
         )
         self.db.add(transaction)
         expiration = self._create_expiration(reserva.id, expires_at)
+        self.db.flush()
+        self._payment_event(
+            transaction=transaction,
+            reservation_id=reserva.id,
+            event_type="checkout_created",
+            new_status=PAYMENT_STATUS_PENDING,
+            provider_event_id=preference_id,
+            raw_payload={"provider": provider, "preference_id_present": bool(preference_id)},
+        )
         self._audit("payment_preference_created", reserva.id, f"provider={provider}")
         self.db.commit()
         self.db.refresh(transaction)
@@ -475,70 +593,150 @@ class PaymentServiceAPI:
     def process_webhook(self, payload: dict, headers: dict, raw_query: str) -> dict:
         if not self._validate_webhook_signature(headers, raw_query):
             raise PaymentServiceError(401, "Firma de webhook invalida.")
-
-        payment_data = self._payment_data_from_webhook(payload, raw_query)
-        provider_payment_id = str(payment_data.get("id") or "")
-        reservation_id_raw = payment_data.get("external_reference") or payload.get("reservation_id")
-        try:
-            reservation_id = int(reservation_id_raw)
-        except (TypeError, ValueError):
-            reservation_id = 0
-
-        transaction = None
-        if provider_payment_id:
-            transaction = self.db.scalar(
-                select(PaymentTransaction).where(PaymentTransaction.provider_payment_id == provider_payment_id)
+        delivery, is_duplicate = self._record_webhook_delivery(payload, headers, raw_query)
+        if is_duplicate:
+            self._payment_event(
+                transaction=None,
+                reservation_id=None,
+                event_type="webhook_duplicate",
+                provider_event_id=delivery.provider_event_id,
+                raw_payload={"delivery_key": delivery.delivery_key},
+                status="duplicate",
             )
-        if transaction is None and reservation_id:
-            transaction = self.latest_transaction(reservation_id)
-        if transaction is None:
-            raise PaymentServiceError(202, "Webhook recibido sin transaccion local asociada.")
-
-        reserva = self.db.get(Reserva, transaction.reservation_id)
-        if reserva is None:
-            raise PaymentServiceError(404, "Reserva no encontrada para el pago.")
-
-        provider_status = str(payment_data.get("status") or "").lower()
-        mapped_status = self._map_provider_status(provider_status)
-        previous_status = transaction.status
-        transaction.provider_payment_id = provider_payment_id or transaction.provider_payment_id
-        transaction.provider_preference_id = str(payment_data.get("preference_id") or transaction.provider_preference_id or "")
-        transaction.status = mapped_status
-        transaction.updated_at = _utcnow()
-        transaction.raw_payload_json = _safe_json(
-            {
-                "provider_status": provider_status,
-                "payment_id": provider_payment_id,
-                "external_reference": reservation_id,
-                "webhook_type": payload.get("type"),
-                "webhook_action": payload.get("action"),
+            self.db.commit()
+            return {
+                "ok": True,
+                "duplicate": True,
+                "delivery_id": delivery.id,
             }
-        )
-        if mapped_status == PAYMENT_STATUS_PAID:
-            transaction.paid_at = transaction.paid_at or _utcnow()
-            reserva.estado = RESERVATION_PAID
-            for expiration in reserva.expirations:
-                if expiration.status == "pending":
-                    expiration.status = "paid"
-                    self.db.add(expiration)
-        elif mapped_status == PAYMENT_STATUS_FAILED:
-            reserva.estado = RESERVATION_FAILED
-        elif mapped_status == PAYMENT_STATUS_CANCELLED:
-            reserva.estado = RESERVATION_CANCELLED
-        elif mapped_status == PAYMENT_STATUS_REFUNDED:
-            reserva.estado = RESERVATION_REFUNDED
 
-        self.db.add(transaction)
-        self.db.add(reserva)
-        if previous_status != mapped_status:
-            self._audit("payment_webhook_processed", reserva.id, f"{previous_status}->{mapped_status}")
-        self.db.commit()
-        return {
-            "ok": True,
-            "reservation_id": reserva.id,
-            "payment_status": transaction.status,
-            "reservation_status": reserva.estado,
-        }
+        try:
+            payment_data = self._payment_data_from_webhook(payload, raw_query)
+            provider_payment_id = str(payment_data.get("id") or "")
+            reservation_id_raw = payment_data.get("external_reference") or payload.get("reservation_id")
+            try:
+                reservation_id = int(reservation_id_raw)
+            except (TypeError, ValueError):
+                reservation_id = 0
+
+            transaction = None
+            if provider_payment_id:
+                transaction = self.db.scalar(
+                    select(PaymentTransaction).where(PaymentTransaction.provider_payment_id == provider_payment_id)
+                )
+            if transaction is None and reservation_id:
+                transaction = self.latest_transaction(reservation_id)
+            if transaction is None:
+                delivery.status = "accepted_unmatched"
+                delivery.processed_at = _utcnow()
+                self.db.add(delivery)
+                self._payment_event(
+                    transaction=None,
+                    reservation_id=reservation_id or None,
+                    event_type="webhook_unmatched",
+                    provider_event_id=provider_payment_id or delivery.provider_event_id,
+                    raw_payload={"external_reference": reservation_id_raw},
+                    status="processed",
+                )
+                self.db.commit()
+                raise PaymentServiceError(202, "Webhook recibido sin transaccion local asociada.")
+
+            reserva = self.db.get(Reserva, transaction.reservation_id)
+            if reserva is None:
+                raise PaymentServiceError(404, "Reserva no encontrada para el pago.")
+
+            provider_status = str(payment_data.get("status") or "").lower()
+            mapped_status = self._map_provider_status(provider_status)
+            previous_status = transaction.status
+            already_processed = (
+                previous_status == mapped_status
+                and bool(provider_payment_id)
+                and transaction.provider_payment_id == provider_payment_id
+            )
+            transaction.provider_payment_id = provider_payment_id or transaction.provider_payment_id
+            transaction.provider_preference_id = str(payment_data.get("preference_id") or transaction.provider_preference_id or "")
+            transaction.status = mapped_status
+            transaction.updated_at = _utcnow()
+            transaction.raw_payload_json = _safe_json(
+                {
+                    "provider_status": provider_status,
+                    "payment_id": provider_payment_id,
+                    "external_reference": reservation_id,
+                    "webhook_type": payload.get("type"),
+                    "webhook_action": payload.get("action"),
+                }
+            )
+            if mapped_status == PAYMENT_STATUS_PAID:
+                transaction.paid_at = transaction.paid_at or _utcnow()
+                apply_state_transition(self.db, reserva, RESERVATION_PAID, action="payment_paid", details=provider_status)
+                for expiration in reserva.expirations:
+                    if expiration.status == "pending":
+                        expiration.status = "paid"
+                        self.db.add(expiration)
+            elif mapped_status == PAYMENT_STATUS_FAILED:
+                apply_state_transition(self.db, reserva, RESERVATION_FAILED, action="payment_failed", details=provider_status)
+            elif mapped_status == PAYMENT_STATUS_CANCELLED:
+                apply_state_transition(self.db, reserva, RESERVATION_CANCELLED, action="payment_cancelled", details=provider_status)
+            elif mapped_status == PAYMENT_STATUS_REFUNDED:
+                apply_state_transition(self.db, reserva, RESERVATION_REFUNDED, action="payment_refunded", details=provider_status)
+
+            self.db.add(transaction)
+            self.db.add(reserva)
+            delivery.status = "duplicate_payment_state" if already_processed else "processed"
+            delivery.processed_at = _utcnow()
+            self.db.add(delivery)
+            self._payment_event(
+                transaction=transaction,
+                reservation_id=reserva.id,
+                event_type="webhook_processed" if not already_processed else "webhook_duplicate_state",
+                previous_status=previous_status,
+                new_status=mapped_status,
+                provider_event_id=provider_payment_id or delivery.provider_event_id,
+                raw_payload={"provider_status": provider_status, "delivery_id": delivery.id},
+                status="duplicate" if already_processed else "processed",
+            )
+            if previous_status != mapped_status:
+                self._audit("payment_webhook_processed", reserva.id, f"{previous_status}->{mapped_status}")
+            self.db.commit()
+            return {
+                "ok": True,
+                "reservation_id": reserva.id,
+                "payment_status": transaction.status,
+                "reservation_status": reserva.estado,
+                "duplicate": already_processed,
+                "delivery_id": delivery.id,
+            }
+        except ReservationStateError as exc:
+            delivery.status = "state_rejected"
+            delivery.error_message = str(exc)[:1200]
+            delivery.processed_at = _utcnow()
+            self.db.add(delivery)
+            self._payment_event(
+                transaction=None,
+                reservation_id=None,
+                event_type="webhook_state_rejected",
+                provider_event_id=delivery.provider_event_id,
+                raw_payload={"error": str(exc), "delivery_id": delivery.id},
+                status="failed",
+            )
+            self.db.commit()
+            raise PaymentServiceError(409, str(exc), "reservation_state_rejected") from exc
+        except PaymentServiceError as exc:
+            if exc.status_code != 202:
+                delivery.status = "failed"
+                delivery.error_message = str(exc)[:1200]
+                delivery.processed_at = _utcnow()
+                self.db.add(delivery)
+                self._payment_event(
+                    transaction=None,
+                    reservation_id=None,
+                    event_type="webhook_failed",
+                    provider_event_id=delivery.provider_event_id,
+                    raw_payload={"error": exc.code, "delivery_id": delivery.id},
+                    status="failed",
+                )
+                self.db.commit()
+            raise
 
     @staticmethod
     def _map_provider_status(status: str) -> str:

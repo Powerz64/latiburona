@@ -47,6 +47,11 @@ class ReservaOut(ReservaBase):
     payment_url: str | None = None
     payment_transaction_id: int | None = None
     payment_expires_at: datetime | None = None
+    state_updated_at: datetime | None = None
+    cancelled_at: datetime | None = None
+    paid_at: datetime | None = None
+    expired_at: datetime | None = None
+    refunded_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

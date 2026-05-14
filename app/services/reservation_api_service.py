@@ -211,7 +211,9 @@ class ReservationApiService:
                     "time_range": item.time_range,
                 }
                 for item in self._cache
-                if item.service_type == cancha_id and item.reservation_date == fecha and item.status != "cancelada"
+                if item.service_type == cancha_id
+                and item.reservation_date == fecha
+                and item.status not in {"cancelada", "cancelled", "failed", "refunded", "expired"}
             ]
 
         if exclude_reservation_id is not None:
@@ -359,7 +361,7 @@ class ReservationApiService:
             "people_count": reservation.people_count,
             "phone": reservation.phone,
             "address": reservation.address,
-            "status": "confirmada",
+            "status": "confirmed",
         }
         self.update_reservation(reservation_id, payload)
 

@@ -6,9 +6,13 @@ from datetime import date, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from app.backend.models import PaymentTransaction, Reserva, User
+from app.backend.models import PaymentEvent, PaymentTransaction, Reserva, User, WebhookDeliveryLog
 from app.backend.services.auth_service import user_can_manage_global
-from app.backend.services.reservation_service_api import CONFIRMED_RESERVATION_STATES, PENDING_RESERVATION_STATES
+from app.backend.services.reservation_service_api import (
+    CONFIRMED_RESERVATION_STATES,
+    PENDING_RESERVATION_STATES,
+    RELEASED_RESERVATION_STATES,
+)
 from app.utils.constants import SERVICE_TYPES, TIME_OPTIONS
 from app.utils.time_slots import hour_slots_between
 
@@ -32,7 +36,7 @@ class AnalyticsServiceAPI:
             .order_by(Reserva.fecha.asc(), Reserva.hora_inicio.asc())
         )
         if not include_cancelled:
-            query = query.where(Reserva.estado != "cancelada")
+            query = query.where(~Reserva.estado.in_(RELEASED_RESERVATION_STATES))
         if not user_can_manage_global(self.current_user):
             query = query.where(Reserva.user_id == self.current_user.id)
         return list(self.db.scalars(query).all())
@@ -42,6 +46,15 @@ class AnalyticsServiceAPI:
         if not user_can_manage_global(self.current_user):
             query = query.where(Reserva.user_id == self.current_user.id)
         return list(self.db.scalars(query).all())
+
+    def _payment_events(self) -> list[PaymentEvent]:
+        query = select(PaymentEvent).join(Reserva, PaymentEvent.reservation_id == Reserva.id, isouter=True)
+        if not user_can_manage_global(self.current_user):
+            query = query.where(Reserva.user_id == self.current_user.id)
+        return list(self.db.scalars(query).all())
+
+    def _webhook_deliveries(self) -> list[WebhookDeliveryLog]:
+        return list(self.db.scalars(select(WebhookDeliveryLog)).all())
 
     def _in_range(self, reservas: list[Reserva], start: date, end: date) -> list[Reserva]:
         return [item for item in reservas if start <= _parse_date(item.fecha) <= end]
@@ -107,7 +120,7 @@ class AnalyticsServiceAPI:
         return {
             "confirmed": sum(counter.get(status, 0) for status in CONFIRMED_RESERVATION_STATES),
             "pending": sum(counter.get(status, 0) for status in PENDING_RESERVATION_STATES),
-            "cancelled": counter.get("cancelada", 0),
+            "cancelled": counter.get("cancelada", 0) + counter.get("cancelled", 0) + counter.get("CANCELLED", 0),
             "items": [{"status": key, "reservations": counter[key]} for key in sorted(counter)],
         }
 
@@ -165,6 +178,8 @@ class AnalyticsServiceAPI:
     def overview(self) -> dict:
         reservas = self._reservations()
         payments = self._payment_transactions()
+        events = self._payment_events()
+        webhooks = self._webhook_deliveries()
         today = date.today()
         today_reservas = self._in_range(reservas, today, today)
         week = self.weekly_summary()
@@ -179,6 +194,9 @@ class AnalyticsServiceAPI:
         paid_payments = [item for item in payments if item.status == "paid"]
         pending_payments = [item for item in payments if item.status == "pending"]
         failed_payments = [item for item in payments if item.status == "failed"]
+        failed_webhooks = [item for item in webhooks if item.status in {"failed", "state_rejected"}]
+        duplicate_webhooks = [item for item in webhooks if item.duplicate or item.status in {"duplicate", "duplicate_payment_state"}]
+        retry_queue = [item for item in payments if item.status in {"pending", "failed"}]
         paid_reservation_ids = {item.reservation_id for item in paid_payments}
         payment_hour_counts: Counter = Counter(item.paid_at.strftime("%H:00") for item in paid_payments if item.paid_at)
         revenue_by_court: defaultdict[str, float] = defaultdict(float)
@@ -213,6 +231,11 @@ class AnalyticsServiceAPI:
             "paid_reservations": len(paid_reservation_ids),
             "pending_payments": len(pending_payments),
             "failed_payments": len(failed_payments),
+            "webhook_failures": len(failed_webhooks),
+            "webhook_duplicates": len(duplicate_webhooks),
+            "payment_events": len(events),
+            "retry_queue": len(retry_queue),
+            "active_reservations": len([item for item in reservas if item.estado not in {"cancelada", "cancelled", "expired", "refunded", "failed", "FAILED", "CANCELLED", "EXPIRED", "REFUNDED"}]),
             "conversion_rate": round((len(paid_reservation_ids) / len(reservas)) * 100, 2) if reservas else 0.0,
             "most_profitable_court": max(revenue_by_court, key=revenue_by_court.get) if revenue_by_court else "--",
             "average_ticket": round(total_paid_revenue / len(paid_payments), 2) if paid_payments else 0.0,
@@ -232,3 +255,52 @@ class AnalyticsServiceAPI:
             "scope": "global" if user_can_manage_global(self.current_user) else "own",
             "generated_at": datetime.utcnow().isoformat(),
         }
+
+    def operations_health(self) -> dict:
+        overview = self.overview()
+        webhooks = self._webhook_deliveries()
+        recent_webhooks = sorted(webhooks, key=lambda item: item.received_at, reverse=True)[:8]
+        severity = "ok"
+        if overview["webhook_failures"] or overview["failed_payments"]:
+            severity = "warning"
+        if overview["webhook_failures"] >= 3:
+            severity = "critical"
+        return {
+            "severity": severity,
+            "generated_at": datetime.utcnow().isoformat(),
+            "metrics": {
+                "today_revenue": overview["revenue_today"],
+                "pending_payments": overview["pending_payments"],
+                "failed_payments": overview["failed_payments"],
+                "occupancy": overview["occupancy"],
+                "active_reservations": overview["active_reservations"],
+                "webhook_failures": overview["webhook_failures"],
+                "retry_queue": overview["retry_queue"],
+            },
+            "webhook_monitoring": [
+                {
+                    "id": item.id,
+                    "provider": item.provider,
+                    "event_type": item.event_type,
+                    "status": item.status,
+                    "duplicate": bool(item.duplicate),
+                    "received_at": item.received_at.isoformat(),
+                    "processed_at": item.processed_at.isoformat() if item.processed_at else None,
+                }
+                for item in recent_webhooks
+            ],
+            "alerts": self._operations_alerts(overview),
+        }
+
+    @staticmethod
+    def _operations_alerts(overview: dict) -> list[dict]:
+        alerts = []
+        if overview.get("failed_payments", 0):
+            alerts.append({"tone": "danger", "title": "Pagos fallidos", "detail": "Revisar checkout y contactar clientes."})
+        if overview.get("pending_payments", 0):
+            alerts.append({"tone": "warning", "title": "Pagos pendientes", "detail": "Priorizar seguimiento antes de la expiracion."})
+        if overview.get("webhook_failures", 0):
+            alerts.append({"tone": "danger", "title": "Webhooks con error", "detail": "Validar entregas de Mercado Pago."})
+        if not alerts:
+            alerts.append({"tone": "success", "title": "Operacion saludable", "detail": "Pagos y reservas sin alertas criticas."})
+        return alerts[:5]

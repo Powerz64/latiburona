@@ -30,6 +30,11 @@ def _latest_payment_info(db: Session, reserva_id: int) -> dict:
         "payment_url": payment.payment_url if payment else None,
         "payment_transaction_id": payment.id if payment else None,
         "payment_expires_at": expiration.expires_at if expiration else None,
+        "state_updated_at": item.state_updated_at,
+        "cancelled_at": item.cancelled_at,
+        "paid_at": item.paid_at,
+        "expired_at": item.expired_at,
+        "refunded_at": item.refunded_at,
     }
 
 
@@ -67,6 +72,19 @@ def list_reservas(
     service = ReservationServiceAPI(db, current_user=current_user)
     items = service.list_reservas(cancha_id=cancha_id, fecha=fecha, include_cancelled=include_cancelled)
     return [_serialize_reserva(item, db) for item in items]
+
+
+@router.get("/smart-suggestions")
+def smart_reservation_suggestions(
+    cancha_id: int = Query(...),
+    fecha: str = Query(...),
+    hora_inicio: str = Query(...),
+    hora_fin: str = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    service = ReservationServiceAPI(db, current_user=current_user)
+    return service.smart_suggestions(cancha_id, fecha, hora_inicio, hora_fin)
 
 
 @router.get("/{reserva_id}", response_model=ReservaOut)

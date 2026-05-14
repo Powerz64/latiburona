@@ -9,5 +9,8 @@ class AppSettings:
     weekend_surcharge: float
     bulk_people_threshold: int
     bulk_discount: float
+    peak_hour_multiplier: float
+    off_peak_discount: float
+    promo_window_discount: float
     allow_children: bool
     allow_pets: bool

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -10,16 +11,26 @@ from app.backend.config import load_backend_pricing_settings
 from app.backend.models import AuditLog, Cancha, Reserva, User
 from app.backend.schemas import ReservaCreate, ReservaUpdate
 from app.backend.services.auth_service import user_can_manage_global
+from app.backend.services.reservation_state_machine import (
+    CANCELLED,
+    CONFIRMED,
+    CONFIRMED_STATES,
+    DRAFT,
+    PENDING_STATES,
+    RELEASED_STATES,
+    ReservationStateError,
+    apply_state_transition,
+)
 from app.services.pricing_service import PricingService
 from app.utils.time_slots import generate_time_options
 from app.utils.validators import ValidationError, validate_reservation_input
 
-BUFFER_MINUTES = 10
+BUFFER_MINUTES = max(0, int(float(os.getenv("RESERVATION_TURNAROUND_MINUTES", "10") or 10)))
 OPERATING_START = "08:00"
 OPERATING_END = "22:00"
-RELEASED_RESERVATION_STATES = {"cancelada", "CANCELLED", "FAILED", "REFUNDED", "EXPIRED"}
-CONFIRMED_RESERVATION_STATES = {"confirmada", "PAID"}
-PENDING_RESERVATION_STATES = {"pendiente", "PENDING_PAYMENT", "PARTIAL_PAYMENT"}
+RELEASED_RESERVATION_STATES = {"cancelada", "CANCELLED", "FAILED", "REFUNDED", "EXPIRED", *RELEASED_STATES}
+CONFIRMED_RESERVATION_STATES = {"confirmada", "PAID", *CONFIRMED_STATES}
+PENDING_RESERVATION_STATES = {"pendiente", "PENDING_PAYMENT", "PARTIAL_PAYMENT", *PENDING_STATES}
 
 
 @dataclass
@@ -195,6 +206,63 @@ class ReservationServiceAPI:
                 break
         return suggestions
 
+    def smart_suggestions(
+        self,
+        cancha_id: int,
+        fecha: str,
+        hora_inicio: str,
+        hora_fin: str,
+    ) -> dict:
+        requested_start = self._to_datetime(fecha, hora_inicio)
+        requested_end = self._to_datetime(fecha, hora_fin)
+        duration = requested_end - requested_start
+        canchas = list(self.db.scalars(select(Cancha).where(Cancha.is_active == True).order_by(Cancha.nombre.asc())).all())  # noqa: E712
+        scored: list[dict] = []
+        for cancha in canchas:
+            reservations = list(self.db.scalars(self._availability_query(cancha_id=cancha.id, fecha=fecha)).all())
+            occupied_hours = sum(
+                max(0.0, (self._to_datetime(item.fecha, item.hora_fin) - self._to_datetime(item.fecha, item.hora_inicio)).total_seconds() / 3600)
+                for item in reservations
+            )
+            available = self.is_slot_available(cancha.id, fecha, hora_inicio, hora_fin)
+            utilization = min(100.0, round((occupied_hours / max(1, len(generate_time_options(start_hour=8, end_hour=22)))) * 100, 2))
+            gap_penalty = 0
+            if available:
+                candidate_start = requested_start
+                candidate_end = requested_end
+                surrounding = sorted(reservations, key=lambda item: item.hora_inicio)
+                for item in surrounding:
+                    existing_end = self._to_datetime(item.fecha, item.hora_fin)
+                    existing_start = self._to_datetime(item.fecha, item.hora_inicio)
+                    if existing_end <= candidate_start:
+                        gap_penalty = min(gap_penalty or 999, abs((candidate_start - existing_end).total_seconds() / 60))
+                    if existing_start >= candidate_end:
+                        gap_penalty = min(gap_penalty or 999, abs((existing_start - candidate_end).total_seconds() / 60))
+            score = (35 if available else -80) + utilization - min(gap_penalty, 120) / 8
+            scored.append(
+                {
+                    "cancha_id": cancha.id,
+                    "court": cancha.nombre,
+                    "available": available,
+                    "utilization": utilization,
+                    "score": round(score, 2),
+                    "reason": "Mejor balance ocupacion/cupo" if available else "Horario ocupado",
+                }
+            )
+        scored.sort(key=lambda item: (-item["score"], item["court"]))
+        alternatives = self.suggest_alternatives(cancha_id, fecha, hora_inicio, hora_fin)
+        return {
+            "best_court": scored[0] if scored else {},
+            "court_rankings": scored[:5],
+            "nearby_times": alternatives,
+            "buffer_minutes": BUFFER_MINUTES,
+            "operational_hint": (
+                "Usa la cancha sugerida para llenar huecos operativos sin crear traslapes."
+                if scored and scored[0].get("available")
+                else "El rango solicitado esta congestionado; revisa horarios cercanos."
+            ),
+        }
+
     def create_reserva(self, payload: ReservaCreate) -> Reserva:
         cleaned = self._validated_payload(payload)
         if not self.is_slot_available(
@@ -225,7 +293,7 @@ class ReservationServiceAPI:
             fecha=cleaned["reservation_date"],
             hora_inicio=cleaned["start_time"],
             hora_fin=cleaned["end_time"],
-            estado=cleaned["status"],
+            estado=DRAFT,
             total=pricing.total,
             subtotal=pricing.subtotal,
             descuento=pricing.discount,
@@ -237,6 +305,14 @@ class ReservationServiceAPI:
         )
         self.db.add(reserva)
         self.db.flush()
+        apply_state_transition(
+            self.db,
+            reserva,
+            cleaned["status"] or DRAFT,
+            actor=self.current_user,
+            action="reservation_created",
+            details=f"{reserva.fecha} {reserva.hora_inicio}-{reserva.hora_fin}",
+        )
         self._audit("reservation_created", reserva, f"{reserva.fecha} {reserva.hora_inicio}-{reserva.hora_fin}")
         self.db.commit()
         self.db.refresh(reserva)
@@ -277,7 +353,17 @@ class ReservationServiceAPI:
         reserva.fecha = cleaned["reservation_date"]
         reserva.hora_inicio = cleaned["start_time"]
         reserva.hora_fin = cleaned["end_time"]
-        reserva.estado = cleaned["status"]
+        try:
+            apply_state_transition(
+                self.db,
+                reserva,
+                cleaned["status"],
+                actor=self.current_user,
+                action="reservation_updated",
+                details=f"estado={cleaned['status']}",
+            )
+        except ReservationStateError as exc:
+            raise ValidationError(str(exc)) from exc
         reserva.total = pricing.total
         reserva.subtotal = pricing.subtotal
         reserva.descuento = pricing.discount
@@ -297,7 +383,13 @@ class ReservationServiceAPI:
         reserva = self.get_reserva(reserva_id)
         if reserva is None:
             return None
-        reserva.estado = "cancelada"
+        apply_state_transition(
+            self.db,
+            reserva,
+            CANCELLED,
+            actor=self.current_user,
+            action="reservation_cancelled",
+        )
         self.db.add(reserva)
         self._audit("reservation_cancelled", reserva)
         self.db.commit()

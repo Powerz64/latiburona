@@ -23,6 +23,11 @@ def analytics_overview(service: AnalyticsServiceAPI = Depends(_service)) -> dict
     return service.overview()
 
 
+@router.get("/operations")
+def operations_health(service: AnalyticsServiceAPI = Depends(_service)) -> dict:
+    return service.operations_health()
+
+
 @router.get("/reservations-by-day")
 def reservations_by_day(service: AnalyticsServiceAPI = Depends(_service)) -> dict:
     return service.reservations_by_day()
